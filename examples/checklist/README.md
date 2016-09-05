@@ -1,12 +1,6 @@
-####Quick and Robust Admin interface written in Go
+#####Checklist project example using QRA.
 
-[![License MIT](https://img.shields.io/npm/l/express.svg)](http://opensource.org/licenses/MIT)
-[![Build Status](https://travis-ci.org/jimmy-go/qra.svg?branch=master)](https://travis-ci.org/jimmy-go/qra)
-[![Go Report Card](https://goreportcard.com/badge/github.com/jimmy-go/qra)](https://goreportcard.com/report/github.com/jimmy-go/qra)
-[![GoDoc](http://godoc.org/github.com/jimmy-go/qra?status.png)](http://godoc.org/github.com/jimmy-go/qra)
-[![Coverage Status](https://coveralls.io/repos/github/jimmy-go/qra/badge.svg?branch=master)](https://coveralls.io/github/jimmy-go/qra?branch=master)
-
-#####Installation:
+#####Usage:
 ```
 ```
 
