@@ -43,10 +43,11 @@ import (
 )
 
 var (
+	port       = flag.Int("port", 5050, "Listen port.")
 	templates  = flag.String("templates", "", "Templates dir.")
 	static     = flag.String("static", "", "Static dir.")
-	connectURL = flag.String("url", "", "PostgreSQL url connection (Business Logic).")
-	managerURL = flag.String("url-manager", "", "SQLite url connection (QRA logic).")
+	connectURL = flag.String("db", "", "PostgreSQL url connection (Business Logic).")
+	managerURL = flag.String("db-manager", "", "SQLite url connection (QRA logic).")
 )
 
 func main() {
@@ -57,16 +58,20 @@ func main() {
 	log.Printf("connection url [%v]", *connectURL)
 	log.Printf("manager url [%v]", *managerURL)
 
-	err = dai.Configure("postgres", *connectURL)
-	P(err)
+	// qra logic
 
-	manager, err := mng.New("sqlite", *managerURL)
+	manager, err := manager.New("sqlite", *managerURL)
 	P(err)
 
 	admin, err := qra.New()
 	P(err)
 
+	// business logic
+
 	err = srest.LoadViews(*templates, srest.DefaultFuncMap)
+	P(err)
+
+	err = dai.Configure("postgres", *connectURL)
 	P(err)
 
 	m := srest.New(nil)

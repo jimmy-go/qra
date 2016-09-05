@@ -35,14 +35,6 @@ func New() *QRA {
 	return q
 }
 
-// Manager interface
-type Manager interface {
-	Loger
-	Accounter
-	Roler
-	Permissioner
-}
-
 // Loger interface
 type Loger interface {
 	Login(username, password string) error
@@ -57,12 +49,12 @@ type Accounter interface {
 
 // Roler interface
 type Roler interface {
-	Roles() ([]string, error)
+	CatalogRoles() ([]string, error)
 	RolesByUser(string) ([]string, error)
 }
 
 // Permissioner interface
 type Permissioner interface {
-	Permissions() ([]string, error)
+	CatalogPermissions() ([]string, error)
 	PermissionsByUser(string) ([]string, error)
 }

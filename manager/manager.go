@@ -89,7 +89,42 @@ func (dm *Manager) Roles() []string {
 	return roles, err
 }
 
+// RolesByUser func
+func (dm *Manager) RolesByUser(ID string) []string {
+	var roles []string
+	err := dm.Db.Select(&roles, `
+		SELECT
+			id
+		FROM role
+		WHERE user_id=$1
+		LIMIT 100;
+	`, ID)
+	return roles, err
+}
+
 // Permissions func
 func (dm *Manager) Permissions() []string {
-	return []string{}
+	var pers []string
+	err := dm.Db.Select(&pers, `
+		SELECT
+			id
+		FROM permission
+		LIMIT 100;
+	`)
+	return pers, err
+
+}
+
+// PermissionsByUser func
+func (dm *Manager) PermissionsByUser(ID string) []string {
+	var pers []string
+	err := dm.Db.Select(&pers, `
+		SELECT
+			id
+		FROM permission
+		WHERE user_id=$1
+		LIMIT 100;
+	`, ID)
+	return pers, err
+
 }
