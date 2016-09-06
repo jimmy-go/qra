@@ -32,37 +32,45 @@ import (
 	// _ "github.com/mattn/go-sqlite3"
 
 	"github.com/jimmy-go/pgwp"
+	"github.com/jimmy-go/qra"
 )
 
 var (
-	// Default default manager.
-	Default *Manager
+	sessions    *Session
+	accounts    *Account
+	roles       *Role
+	permissions *Permission
+
+	// Db database for this manager.
+	Db *pgwp.Pool
 )
 
-// Manager satisfies qra.Manager.
-type Manager struct {
-	Db *pgwp.Db
+// Connect starts the manager.
+func Connect(driver, connectURL string) error {
+	var err error
+	Db, err = pgwp.Connect(driver, connectURL, 5, 5)
+	if err != nil {
+		return err
+	}
+
+	// register qra default manager or panics.
+	qra.MustRegisterSessioner(sessions)
+	qra.MustRegisterAccounter(accounts)
+	qra.MustRegisterRoler(roles)
+	qra.MustRegisterPermissioner(permissions)
+	return nil
 }
 
-// New returns a new Manager.
-func New(driver, connectURL string) (*Manager, error) {
-	pool, err := pgwp.Connect(driver, connectURL, 5, 5)
-	if err != nil {
-		return nil, err
-	}
-	dm := &Manager{
-		Db: pool,
-	}
-	return dm, nil
-}
-
-// Must calls New or panics.
-func Must(driver, connectURL string) *Manager {
-	dm, err := New(driver, connectURL)
-	if err != nil {
-		panic(err)
-	}
-	return dm
+// Login login.
+func (dm *Manager) Login(username, password string) error {
+	var users []string
+	err := dm.Db.Select(&users, `
+		SELECT
+			id
+		FROM person
+		LIMIT 100;
+	`)
+	return users, err
 }
 
 // Users func

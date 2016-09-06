@@ -1,6 +1,5 @@
-// Package mng contains QRA manager for checklist
-// project.
-// // Resource used across all the example.
+// Package rawmanager contains a QRA manager only on cache.
+// Was done for most simple example of QRA manager.
 //
 // MIT License
 //
@@ -23,19 +22,25 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package mng
+package rawmanager
 
-import "github.com/jimmy-go/qra"
-
-func init() {
-	var err error
-	Admin, err = qra.New(nil)
-	if err != nil {
-		panic(err)
-	}
-}
+import (
+	"github.com/jimmy-go/qra"
+)
 
 var (
-	// Admin base struct shared across checklist example.
-	Admin *qra.QRA
+	sessions    *Session
+	accounts    *Account
+	roles       *Role
+	permissions *Permission
 )
+
+// Connect starts the manager.
+func Connect() error {
+	// register qra default manager or panics.
+	qra.MustRegisterSessioner(sessions)
+	qra.MustRegisterAccounter(accounts)
+	qra.MustRegisterRoler(roles)
+	qra.MustRegisterPermissioner(permissions)
+	return nil
+}

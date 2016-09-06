@@ -18,3 +18,8 @@ func Configure(driver, connectURL string) error {
 	}
 	return nil
 }
+
+// Close closes database connections.
+func Close() error {
+	return Db.Close()
+}

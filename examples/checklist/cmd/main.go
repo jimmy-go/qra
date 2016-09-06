@@ -32,12 +32,10 @@ import (
 	// import driver
 	_ "github.com/mattn/go-sqlite3"
 
-	"github.com/jimmy-go/qra"
 	"github.com/jimmy-go/qra/examples/checklist/dai"
 	"github.com/jimmy-go/qra/examples/checklist/list"
 	"github.com/jimmy-go/qra/examples/checklist/session"
 	"github.com/jimmy-go/qra/examples/checklist/users"
-	"github.com/jimmy-go/qra/examples/mng"
 	"github.com/jimmy-go/qra/manager"
 	"github.com/jimmy-go/srest"
 )
@@ -60,10 +58,8 @@ func main() {
 
 	// qra logic
 
-	manager, err := manager.New("sqlite", *managerURL)
-	P(err)
-
-	admin, err := qra.New()
+	// register qra/manager as qra.DefaultManager
+	err := manager.Connect("sqlite", *managerURL)
 	P(err)
 
 	// business logic
@@ -82,6 +78,7 @@ func main() {
 	m.Get("/users", http.HandlerFunc(users.Index))
 	m.Get("/checklist", http.HandlerFunc(list.Index))
 	<-m.Run(*port)
+	dai.Close()
 }
 
 // P panics if error is present.

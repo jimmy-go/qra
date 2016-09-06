@@ -28,7 +28,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/jimmy-go/qra/examples/checklist/mng"
+	"github.com/jimmy-go/qra"
 	"github.com/jimmy-go/srest"
 )
 
@@ -45,7 +45,14 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	u := r.Form.Get("username")
 	p := r.Form.Get("password")
-	err := manager.Login(u, p)
+
+	// qra.Login calls qra.DefaultManager.Sessioner.Login method
+	err := qra.Login(u, p)
+	if err != nil {
+		log.Printf("Login : err [%s]", err)
+	}
+
+	token, err := qra.SessionCreate(userID)
 	if err != nil {
 		log.Printf("Login : err [%s]", err)
 	}
@@ -55,6 +62,12 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 // Logout endpoint /logout GET
 func Logout(w http.ResponseWriter, r *http.Request) {
+	// take session from somewhere
+	sessionID := r.Header.Get("Authorization")
+	err := qra.SessionDelete(sessionID)
+	if err != nil {
+		log.Printf("Logout : err [%s]", err)
+	}
 
 	http.Redirect(w, r, "/login", http.StatusSeeOther)
 }
