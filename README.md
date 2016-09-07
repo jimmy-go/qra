@@ -49,7 +49,7 @@ with PostgreSQL integration.
 `qra/rawmanager.Connect()` is a manager with only cache data (never use it on production,
 demonstration purposes only).
 
-See examples dir for more information.
+See the [QRA examples](https://github.com/jimmy-go/qra-examples) for real world usage.
 
 #####License:
 

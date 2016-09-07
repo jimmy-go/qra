@@ -52,6 +52,9 @@ type Session struct {
 	sync.RWMutex
 }
 
+// ImplementsSessioner satisfies Sessioner.
+func (s *Session) ImplementsSessioner() {}
+
 // Login func.
 func (s *Session) Login(u, p string) error {
 	s.RLock()
@@ -101,6 +104,3 @@ func (s *Session) Delete(sessionID string) error {
 	delete(s.Data, sessionID)
 	return nil
 }
-
-// ImplementsSessioner satisfies Sessioner.
-func (s *Session) ImplementsSessioner() {}
