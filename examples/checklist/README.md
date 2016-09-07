@@ -17,10 +17,10 @@ Example in progress.
 #####Preview:
 
 ![preview_login.png](preview_login.png)
-login preview
+Login preview
 
 ![preview_home.png](preview_home.png)
-home preview
+Home preview
 
 #####Credits:
 
