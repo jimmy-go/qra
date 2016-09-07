@@ -1,4 +1,4 @@
-// Package manager contains the Default manager for roles,
+// Package pgmanager contains the Default manager for roles,
 // sessions, user permissions and users itself in SQLite.
 //
 // You can use it as current state or make your own satisfying
@@ -25,11 +25,11 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package manager
+package pgmanager
 
 import (
 	// import driver in main
-	// _ "github.com/mattn/go-sqlite3"
+	// _ "github.com/lib/pq"
 
 	"github.com/jimmy-go/pgwp"
 	"github.com/jimmy-go/qra"
