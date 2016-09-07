@@ -1,8 +1,30 @@
 #####Checklist project example using QRA.
 
+Example in progress.
+
 #####Usage:
 ```
+  -db string
+       	PostgreSQL url connection (Business Logic).
+  -port int
+       	Listen port. (default 5050)
+  -static string
+       	Static dir.
+  -templates string
+       	Templates dir.
 ```
+
+#####Preview:
+
+![preview_login.png](preview_login.png)
+login preview
+
+![preview_home.png](preview_home.png)
+home preview
+
+#####Credits:
+
+* [AdminLTE template](https://almsaeedstudio.com)
 
 #####License:
 

@@ -45,17 +45,22 @@ func Login(w http.ResponseWriter, r *http.Request) {
 
 	u := r.Form.Get("username")
 	p := r.Form.Get("password")
+	log.Printf("Login : username [%s] password [%s]", u, p)
 
 	// qra.Login calls qra.DefaultManager.Sessioner.Login method
 	err := qra.Login(u, p)
 	if err != nil {
 		log.Printf("Login : err [%s]", err)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
 
+	var userID string
 	token, err := qra.SessionCreate(userID)
 	if err != nil {
 		log.Printf("Login : err [%s]", err)
+		http.Redirect(w, r, "/login", http.StatusSeeOther)
 	}
+	log.Printf("Login : token : [%s]", token)
 
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }

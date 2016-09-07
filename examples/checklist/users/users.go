@@ -24,6 +24,7 @@
 package users
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/jimmy-go/srest"
@@ -33,5 +34,8 @@ import (
 func Index(w http.ResponseWriter, r *http.Request) {
 	v := map[string]interface{}{}
 
-	srest.Render(w, "users/index.html", v)
+	err := srest.Render(w, "users/index.html", v)
+	if err != nil {
+		log.Printf("Index : Render : err [%s]", err)
+	}
 }

@@ -40,7 +40,7 @@ func MyLoginHandler(w http.Response, r *http.Request) {
 #####One more thing...
 QRA has a collection of managers with several database integrations:
 
-`qra/manager.Connect("sqlite", "url://somedatabasefile.sql")` registers a manager
+`qra/litemanager.Connect("sqlite", "url://somedatabasefile.sql")` registers a manager
 with sqlite integration.
 
 `qra/pgmanager.Connect("postgres", "url://somedatabasefile.sql")` registers a manager

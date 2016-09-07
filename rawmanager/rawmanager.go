@@ -25,6 +25,8 @@
 package rawmanager
 
 import (
+	"log"
+
 	"github.com/jimmy-go/qra"
 )
 
@@ -33,14 +35,39 @@ var (
 	accounts    *Account
 	roles       *Role
 	permissions *Permission
+	actions     *Action
 )
 
 // Connect starts the manager.
+// In most common cases here you start third party connections
+// as databases, clients, etc.
 func Connect() error {
+	sessions = &Session{
+		Data: make(map[string]string),
+	}
+	accounts = &Account{
+		Data: make(map[string]string),
+	}
+	roles = &Role{
+		Data: make(map[string]string),
+	}
+	permissions = &Permission{
+		Data: make(map[string]string),
+	}
+	actions = &Action{
+		Data: make(map[string]string),
+	}
+	log.Printf("RawManager : sessions [%v]", sessions)
+	log.Printf("RawManager : accounts [%v]", accounts)
+	log.Printf("RawManager : roles [%v]", roles)
+	log.Printf("RawManager : permissions [%v]", permissions)
+	log.Printf("RawManager : actions [%v]", actions)
+
 	// register qra default manager or panics.
 	qra.MustRegisterSessioner(sessions)
 	qra.MustRegisterAccounter(accounts)
 	qra.MustRegisterRoler(roles)
 	qra.MustRegisterPermissioner(permissions)
+	qra.MustRegisterActioner(actions)
 	return nil
 }
