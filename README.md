@@ -6,9 +6,52 @@
 [![GoDoc](http://godoc.org/github.com/jimmy-go/qra?status.png)](http://godoc.org/github.com/jimmy-go/qra)
 [![Coverage Status](https://coveralls.io/repos/github/jimmy-go/qra/badge.svg?branch=master)](https://coveralls.io/github/jimmy-go/qra?branch=master)
 
+QRA is a collection of interfaces for common tasks building
+admin sites.
+
+![diagram](diagram.png)
+
 #####Installation:
 ```
+go get gopkg.in/jimmy-go/qra.v0
 ```
+
+#####Usage:
+
+QRA has a default manager, you can add doers with:
+```
+qra.MustRegisterSessioner(yourSessioner)
+qra.MustRegisterAccounter(yourAccounter)
+qra.MustRegisterRoler(yourRoler)
+qra.MustRegisterPermissioner(yourPermissioner)
+qra.MustRegisterActioner(yourActioner)
+```
+
+Inside your project call some qra function.
+```
+func MyLoginHandler(w http.Response, r *http.Request) {
+
+    // this will call qra.DefaultManager.Session.Login method.
+    err := qra.Login("someuser","somepass")
+    // check errors...
+}
+```
+
+#####One more thing...
+QRA has a collection of managers with several database integrations:
+
+`qra/litemanager.Connect("sqlite", "url://somedatabasefile.sql")` registers a manager
+with sqlite integration.
+
+`qra/pgmanager.Connect("postgres", "url://somedatabasefile.sql")` registers a manager
+with PostgreSQL integration.
+
+`qra/rawmanager.Connect()` is a manager with only cache data (never use it on production,
+demonstration purposes only).
+
+#####Examples:
+
+See the [QRA examples](https://github.com/jimmy-go/qra-examples) for real world usage.
 
 #####License:
 

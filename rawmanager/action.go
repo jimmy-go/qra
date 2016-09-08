@@ -1,5 +1,5 @@
-// Package session contains Login and Logout methods
-// integrated with qra.Manager
+// Package rawmanager contains a QRA manager only on cache.
+// Was done for most simple example of QRA manager.
 //
 // MIT License
 //
@@ -22,39 +22,47 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package session
+package rawmanager
 
-import (
-	"log"
-	"net/http"
-
-	"github.com/jimmy-go/qra/examples/checklist/mng"
-	"github.com/jimmy-go/srest"
-)
-
-// Index endpoint /login GET
-func Index(w http.ResponseWriter, r *http.Request) {
-	v := map[string]interface{}{}
-
-	srest.Render(w, "login.html", v)
+// Action struct
+type Action struct {
+	Data map[string]string
 }
 
-// Login endpoint /login POST
-func Login(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-
-	u := r.Form.Get("username")
-	p := r.Form.Get("password")
-	err := manager.Login(u, p)
-	if err != nil {
-		log.Printf("Login : err [%s]", err)
-	}
-
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+// List func.
+func (ac *Action) List() ([]string, error) {
+	return []string{}, nil
 }
 
-// Logout endpoint /logout GET
-func Logout(w http.ResponseWriter, r *http.Request) {
-
-	http.Redirect(w, r, "/login", http.StatusSeeOther)
+// Create func.
+func (ac *Action) Create(name string, data interface{}) error {
+	return nil
 }
+
+// Delete func.
+func (ac *Action) Delete(ID string) error {
+	return nil
+}
+
+// UserActions func.
+func (ac *Action) UserActions(userID string) ([]string, error) {
+	return []string{}, nil
+}
+
+// UserHas func.
+func (ac *Action) UserHas(userID, actionID string) bool {
+	return true
+}
+
+// UserActionAdd func.
+func (ac *Action) UserActionAdd(userID, actionID string) error {
+	return nil
+}
+
+// UserActionRemove func.
+func (ac *Action) UserActionRemove(userID, actionID string) error {
+	return nil
+}
+
+// ImplementsActioner satisfies Actioner.
+func (ac *Action) ImplementsActioner() {}

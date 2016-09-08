@@ -1,6 +1,5 @@
-// Package mng contains QRA manager for checklist
-// project.
-// // Resource used across all the example.
+// Package rawmanager contains a QRA manager only on cache.
+// Was done for most simple example of QRA manager.
 //
 // MIT License
 //
@@ -23,19 +22,47 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package mng
+package rawmanager
 
-import "github.com/jimmy-go/qra"
-
-func init() {
-	var err error
-	Admin, err = qra.New(nil)
-	if err != nil {
-		panic(err)
-	}
+// Permission struct
+type Permission struct {
+	Data map[string]string
 }
 
-var (
-	// Admin base struct shared across checklist example.
-	Admin *qra.QRA
-)
+// List func.
+func (p *Permission) List() ([]string, error) {
+	return []string{}, nil
+}
+
+// Create func.
+func (p *Permission) Create(name string, data interface{}) error {
+	return nil
+}
+
+// Delete func.
+func (p *Permission) Delete(ID string) error {
+	return nil
+}
+
+// UserPermissions func.
+func (p *Permission) UserPermissions(userID string) ([]string, error) {
+	return []string{}, nil
+}
+
+// UserHas func.
+func (p *Permission) UserHas(userID, permissionID string) bool {
+	return true
+}
+
+// UserPermissionAdd func.
+func (p *Permission) UserPermissionAdd(userID, permissionID string) error {
+	return nil
+}
+
+// UserPermissionRemove func.
+func (p *Permission) UserPermissionRemove(userID, permissionID string) error {
+	return nil
+}
+
+// ImplementsPermissioner satisfies Permissioner.
+func (p *Permission) ImplementsPermissioner() {}

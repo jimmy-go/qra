@@ -1,4 +1,5 @@
-// Package users contains User logic.
+// Package rawmanager contains a QRA manager only on cache.
+// Was done for most simple example of QRA manager.
 //
 // MIT License
 //
@@ -21,17 +22,34 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package users
+package rawmanager
 
-import (
-	"net/http"
+import "sync"
 
-	"github.com/jimmy-go/srest"
-)
+// Account struct
+type Account struct {
+	Data map[string]string
 
-// Index endpoint /users GET
-func Index(w http.ResponseWriter, r *http.Request) {
-	v := map[string]interface{}{}
-
-	srest.Render(w, "users/index.html", v)
+	sync.RWMutex
 }
+
+// Create func.
+func (a *Account) Create(username string) error {
+	a.RLock()
+	defer a.RUnlock()
+
+	a.Data[username] = username
+	return nil
+}
+
+// Delete func.
+func (a *Account) Delete(username string) error {
+	a.RLock()
+	defer a.RUnlock()
+
+	delete(a.Data, username)
+	return nil
+}
+
+// ImplementsAccounter satisfies Accounter.
+func (a *Account) ImplementsAccounter() {}
