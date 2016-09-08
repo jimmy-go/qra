@@ -1,4 +1,5 @@
 #!/bin/sh
+
 cd $GOPATH/src/github.com/jimmy-go/qra
 
 if [ "$1" == "bench" ]; then

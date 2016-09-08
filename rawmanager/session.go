@@ -61,6 +61,7 @@ func (s *Session) Login(u, p string) error {
 	defer s.RUnlock()
 
 	log.Printf("Session : u [%s] p [%s]", u, p)
+
 	pass, ok := users[u]
 	if !ok {
 		return errUserNotFound
@@ -76,12 +77,13 @@ func (s *Session) Locate(sessionID string) (interface{}, error) {
 	s.RLock()
 	defer s.RUnlock()
 
+	log.Printf("Locate : sessionID [%s]", sessionID)
+
 	v, ok := s.Data[sessionID]
 	if !ok {
 		return "", errSessionNotFound
 	}
 
-	log.Printf("Locate : sessionID [%s]", sessionID)
 	return v, nil
 }
 
@@ -100,6 +102,8 @@ func (s *Session) Create(userID string) (string, error) {
 func (s *Session) Delete(sessionID string) error {
 	s.RLock()
 	defer s.RUnlock()
+
+	log.Printf("Delete : sessionID [%s]", sessionID)
 
 	delete(s.Data, sessionID)
 	return nil

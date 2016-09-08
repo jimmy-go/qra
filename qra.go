@@ -40,7 +40,10 @@
 // SOFTWARE.
 package qra
 
-import "errors"
+import (
+	"errors"
+	"log"
+)
 
 var (
 	// DefaultManager is the default QRA Manager.
@@ -277,6 +280,7 @@ func MustRegisterActioner(ac Actioner) {
 
 // Login wrapper for Sessioner.Login
 func Login(username, password string) error {
+	log.Printf("QRA : Login : user [%s] pass [%s]", username, password)
 	return DefaultManager.Session.Login(username, password)
 }
 
