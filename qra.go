@@ -4,17 +4,17 @@
 // QRA allows you a fast start for admins and API stability
 // over the time.
 /*
-In order to understand qra interfaces you need to know
-what these methods means:
-RESOURCE
-List: retrieve resource catalog.
-Create: add a new resource item for catalog.
-Delete: delete a resource item from catalog.
-USER
-UserList: user catalog selection.
-UserHas: user has item from resource catalog?
-UserAdd: add resource item to user.
-UserRemove: remove resource item from user.
+	In order to understand qra interfaces you need to know
+	what these methods means:
+				RESOURCE
+	List: retrieve resource catalog.
+	Create: add a new resource item for catalog.
+	Delete: delete a resource item from catalog.
+				USER
+	UserList: user catalog selection.
+	UserHas: user has item from resource catalog?
+	UserAdd: add resource item to user.
+	UserRemove: remove resource item from user.
 */
 //
 // MIT License

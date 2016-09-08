@@ -24,23 +24,62 @@
 // SOFTWARE.
 package rawmanager
 
+import (
+	"errors"
+	"log"
+	"sync"
+)
+
+var (
+	errInvalidData = errors.New("role: invalid role data")
+)
+
 // Role struct
 type Role struct {
-	Data map[string]string
+	Collection []string
+	Data       map[string]string
+	Users      map[string][]string
+
+	sync.RWMutex
 }
 
 // List func.
 func (r *Role) List() ([]string, error) {
-	return []string{}, nil
+	r.RLock()
+	defer r.RUnlock()
+
+	roles := r.Collection
+	return roles, nil
 }
 
 // Create func.
 func (r *Role) Create(name string, data interface{}) error {
+	r.RLock()
+	defer r.RUnlock()
+
+	s, ok := data.(string)
+	if !ok {
+		return errInvalidData
+	}
+
+	r.Data[name] = s
+	r.Collection = append(r.Collection, name)
 	return nil
 }
 
 // Delete func.
 func (r *Role) Delete(ID string) error {
+	r.RLock()
+	defer r.RUnlock()
+
+	log.Printf("Role : Delete : before [%v]", r.Collection)
+	for i := range r.Collection {
+		if r.Collection[i] == ID {
+			r.Collection = append(r.Collection[:i], r.Collection[i+1:]...)
+		}
+	}
+	log.Printf("Role : Delete : after [%v]", r.Collection)
+	delete(r.Data, ID)
 	return nil
 }
 

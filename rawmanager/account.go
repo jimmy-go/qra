@@ -24,18 +24,30 @@
 // SOFTWARE.
 package rawmanager
 
+import "sync"
+
 // Account struct
 type Account struct {
 	Data map[string]string
+
+	sync.RWMutex
 }
 
 // Create func.
 func (a *Account) Create(username string) error {
+	a.RLock()
+	defer a.RUnlock()
+
+	a.Data[username] = username
 	return nil
 }
 
 // Delete func.
 func (a *Account) Delete(username string) error {
+	a.RLock()
+	defer a.RUnlock()
+
+	delete(a.Data, username)
 	return nil
 }
 

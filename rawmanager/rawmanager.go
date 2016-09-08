@@ -49,7 +49,14 @@ func Connect() error {
 		Data: make(map[string]string),
 	}
 	roles = &Role{
-		Data: make(map[string]string),
+		Data:       make(map[string]string),
+		Collection: []string{"admin", "user"},
+		// roles by users.
+		Users: map[string][]string{
+			"admin@mail.com": []string{"admin", "user"},
+			"user1@mail.com": []string{"user"},
+			"user2@mail.com": []string{"user", "blank"},
+		},
 	}
 	permissions = &Permission{
 		Data: make(map[string]string),
