@@ -35,19 +35,13 @@ import (
 var (
 	errSessionNotFound = errors.New("raw session: session not found")
 	errUserNotFound    = errors.New("raw session: user not found")
-
-	// users simulates database user validation.
-	// user:password key set.
-	users = map[string]string{
-		"admin@mail.com": "admin123",
-		"user1@mail.com": "123456",
-		"user2@mail.com": "abcdef",
-	}
+	errInvalidUserID   = errors.New("raw session: invalid user id")
 )
 
 // Session struct
 type Session struct {
-	Data map[string]string
+	Data  map[string]string
+	Users map[string]string
 
 	sync.RWMutex
 }
@@ -61,7 +55,7 @@ func (s *Session) Login(u, p string) error {
 	defer s.RUnlock()
 
 	log.Printf("Session : u [%s] p [%s]", u, p)
-	pass, ok := users[u]
+	pass, ok := s.Users[u]
 	if !ok {
 		return errUserNotFound
 	}
@@ -82,6 +76,9 @@ func (s *Session) Locate(sessionID string) (interface{}, error) {
 	}
 
 	log.Printf("Locate : sessionID [%s]", sessionID)
+	if len(v) < 1 {
+		return "", errSessionNotFound
+	}
 	return v, nil
 }
 
@@ -91,6 +88,10 @@ func (s *Session) Create(userID string) (string, error) {
 	defer s.RUnlock()
 
 	log.Printf("Create : userID [%s]", userID)
+
+	if len(userID) < 1 {
+		return "", errInvalidUserID
+	}
 
 	s.Data[userID] = uuid.NewV4().String()
 	return s.Data[userID], nil

@@ -26,7 +26,7 @@ package rawmanager
 
 // Action struct
 type Action struct {
-	Data map[string]string
+	Data map[string][]string
 }
 
 // List func.

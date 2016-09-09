@@ -26,7 +26,7 @@ package rawmanager
 
 // Permission struct
 type Permission struct {
-	Data map[string]string
+	Data map[string][]string
 }
 
 // List func.

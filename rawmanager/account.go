@@ -34,9 +34,11 @@ type Account struct {
 }
 
 // Create func.
-func (a *Account) Create(username string) error {
+func (a *Account) Create(username, password string) error {
 	a.RLock()
 	defer a.RUnlock()
+
+	// TODO; add password.
 
 	a.Data[username] = username
 	return nil

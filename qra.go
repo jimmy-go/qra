@@ -110,7 +110,7 @@ type Sessioner interface {
 // Accounter ACCOUNT managER interface
 type Accounter interface {
 	// Create method controls user account creation.
-	Create(username string) error
+	Create(username, password string) error
 
 	// Delete method controls user account remove.
 	Delete(username string) error
@@ -296,8 +296,8 @@ func SessionLocate(sessionID string) (interface{}, error) {
 }
 
 // AccountCreate wrapper for Accounter.Create
-func AccountCreate(username string) error {
-	return DefaultManager.Account.Create(username)
+func AccountCreate(username, password string) error {
+	return DefaultManager.Account.Create(username, password)
 }
 
 // AccountDelete wrapper for Accounter.Delete

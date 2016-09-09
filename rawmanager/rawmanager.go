@@ -24,11 +24,7 @@
 // SOFTWARE.
 package rawmanager
 
-import (
-	"log"
-
-	"github.com/jimmy-go/qra"
-)
+import "github.com/jimmy-go/qra"
 
 var (
 	sessions    *Session
@@ -44,8 +40,17 @@ var (
 func Connect() error {
 	sessions = &Session{
 		Data: make(map[string]string),
+		// users simulates database user validation.
+		// user:password key set.
+		Users: map[string]string{
+			"admin@mail.com": "admin123",
+			"user1@mail.com": "123456",
+			"user2@mail.com": "abcdef",
+		},
 	}
 	accounts = &Account{
+		// Data is a collection of accounts created on the way.
+		// a real qra-manager can has access to database.
 		Data: make(map[string]string),
 	}
 	roles = &Role{
@@ -59,16 +64,57 @@ func Connect() error {
 		},
 	}
 	permissions = &Permission{
-		Data: make(map[string]string),
+		// Data contains user and resourceID where he can edit.
+		Data: map[string][]string{
+			// admin can edit himself and user1 and user2.
+			"admin@mail.com": []string{
+				"admin@mail.com",
+				"user1@mail.com",
+				"user2@mail.com",
+			},
+			// user1 has permissions over himself only.
+			"user1@mail.com": []string{
+				"user1@mail.com",
+			},
+			// user2 has permissions over himself only.
+			"user2@mail.com": []string{
+				"user2@mail.com",
+			},
+		},
 	}
 	actions = &Action{
-		Data: make(map[string]string),
+		// Data contains user and his allowed actions.
+		Data: map[string][]string{
+			// admin can create, edit or delete users.
+			"admin@mail.com": []string{
+				"user-create",
+				"user-edit",
+				"user-delete",
+			},
+			// user1 has allowed edit users, create, edit
+			// and delete checklist items.
+			"user1@mail.com": []string{
+				"user-edit",
+				"checklist-create",
+				"checklist-edit",
+				"checklist-delete",
+			},
+			// user2 has allowed edit users, create, edit
+			// and delete checklist items.
+			"user2@mail.com": []string{
+				"user-edit",
+				"checklist-create",
+				"checklist-edit",
+				"checklist-delete",
+			},
+		},
 	}
-	log.Printf("RawManager : sessions [%v]", sessions)
-	log.Printf("RawManager : accounts [%v]", accounts)
-	log.Printf("RawManager : roles [%v]", roles)
-	log.Printf("RawManager : permissions [%v]", permissions)
-	log.Printf("RawManager : actions [%v]", actions)
+
+	//	log.Printf("RawManager : sessions [%v]", sessions)
+	//	log.Printf("RawManager : accounts [%v]", accounts)
+	//	log.Printf("RawManager : roles [%v]", roles)
+	//	log.Printf("RawManager : permissions [%v]", permissions)
+	//	log.Printf("RawManager : actions [%v]", actions)
 
 	// register qra default manager or panics.
 	qra.MustRegisterSessioner(sessions)

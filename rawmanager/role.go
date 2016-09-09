@@ -90,7 +90,27 @@ func (r *Role) UserRoles(userID string) ([]string, error) {
 
 // UserHas func.
 func (r *Role) UserHas(userID, roleID string) bool {
-	return true
+	r.RLock()
+	defer r.RUnlock()
+
+	log.Printf("UserHas : userID [%s] roleID [%s]", userID, roleID)
+
+	if len(userID) < 1 || len(roleID) < 1 {
+		return false
+	}
+
+	roles, ok := r.Users[userID]
+	if !ok {
+		return false
+	}
+	for i := range roles {
+		role := roles[i]
+		log.Printf("UserHas : role [%s] roleID [%s]", role, roleID)
+		if role == roleID {
+			return true
+		}
+	}
+	return false
 }
 
 // UserRoleAdd func.
