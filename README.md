@@ -1,4 +1,4 @@
-####Quick and Robust Admin interface written in Go
+####Quick and Robust Admin interfaces written in Go
 
 [![License MIT](https://img.shields.io/npm/l/express.svg)](http://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.org/jimmy-go/qra.svg?branch=master)](https://travis-ci.org/jimmy-go/qra)
@@ -7,7 +7,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/jimmy-go/qra/badge.svg?branch=master)](https://coveralls.io/github/jimmy-go/qra?branch=master)
 
 QRA is a collection of interfaces for common tasks building
-admin sites.
+authentication and authorization designation.
 
 ![diagram](diagram.png)
 
@@ -20,19 +20,16 @@ go get gopkg.in/jimmy-go/qra.v0
 
 QRA has a default manager, you can add doers with:
 ```
-qra.MustRegisterSessioner(yourSessioner)
-qra.MustRegisterAccounter(yourAccounter)
-qra.MustRegisterRoler(yourRoler)
-qra.MustRegisterPermissioner(yourPermissioner)
-qra.MustRegisterActioner(yourActioner)
+qra.MustRegisterAuthentication(yourAuthentication)
+qra.MustRegisterDesignation(yourDesignationAuthorization)
 ```
 
 Inside your project call some qra function.
 ```
 func MyLoginHandler(w http.Response, r *http.Request) {
 
-    // this will call qra.DefaultManager.Session.Login method.
-    err := qra.Login("someuser","somepass")
+    // this will call DefaultManager.Authentication.Authenticate(ctx, password, dst)
+    err := qra.Authenticate(ctx Identity, password string, dst interface{}) error {
     // check errors...
 }
 ```
