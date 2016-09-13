@@ -28,8 +28,14 @@ Inside your project call some qra function.
 ```
 func MyLoginHandler(w http.Response, r *http.Request) {
 
+    username := r.Form.Get("username")
+    ctx := &SomeContext{User: username} // type must satisfy qra.Identity interface
+    password := r.Form.Get("password")
+
+    var token string
+
     // this will call DefaultManager.Authentication.Authenticate(ctx, password, dst)
-    err := qra.Authenticate(ctx Identity, password string, dst interface{}) error {
+    err := qra.Authenticate(ctx, password, &token) error {
     // check errors...
 }
 ```
