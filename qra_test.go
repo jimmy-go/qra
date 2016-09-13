@@ -28,40 +28,18 @@ import "testing"
 
 type RR struct{}
 
-func (r *RR) ImplementsRoler() {}
-
-func (r *RR) List() ([]string, error) {
-	return []string{}, nil
-}
-
-func (r *RR) Create(name string, data interface{}) error {
+func (r *RR) Authenticate(ctx Identity, password string, dst interface{}) error {
 	return nil
 }
 
-func (r *RR) Delete(name string) error {
-	return nil
-}
-
-func (r *RR) UserRoles(userID string) ([]string, error) {
-	return []string{}, nil
-}
-
-func (r *RR) UserHas(userID, roleID string) bool {
-	return true
-}
-
-func (r *RR) UserRoleAdd(userID, roleID string) error {
-	return nil
-}
-
-func (r *RR) UserRoleRemove(userID, roleID string) error {
+func (r *RR) Close(ctx Identity) error {
 	return nil
 }
 
 // TODO;
 func TestNew(t *testing.T) {
-	roler := &RR{}
-	err := RegisterRoler(roler)
+	auth := &RR{}
+	err := RegisterAuthentication(auth)
 	if err != nil {
 		t.Logf("err [%s]", err)
 		t.Fail()

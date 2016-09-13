@@ -29,78 +29,53 @@ import (
 	"log"
 	"sync"
 
+	"github.com/jimmy-go/qra"
 	"github.com/satori/go.uuid"
 )
 
 var (
-	errSessionNotFound = errors.New("raw session: session not found")
-	errUserNotFound    = errors.New("raw session: user not found")
-	errInvalidUserID   = errors.New("raw session: invalid user id")
+	errInvalidCredentials = errors.New("raw session: invalid username or password")
 )
 
-// Session struct
-type Session struct {
+// Authenticationer struct
+type Authenticationer struct {
 	Data  map[string]string
 	Users map[string]string
 
 	sync.RWMutex
 }
 
-// ImplementsSessioner satisfies Sessioner.
-func (s *Session) ImplementsSessioner() {}
-
-// Login func.
-func (s *Session) Login(u, p string) error {
+// Authenticate makes login for Identity.
+func (s *Authenticationer) Authenticate(ctx qra.Identity, password string, dst interface{}) error {
 	s.RLock()
 	defer s.RUnlock()
 
-	log.Printf("Session : u [%s] p [%s]", u, p)
-	pass, ok := s.Users[u]
-	if !ok {
-		return errUserNotFound
-	}
-	if pass != p {
-		return errUserNotFound
-	}
-	return nil
-}
+	userID := ctx.Me()
+	log.Printf("Authenticate : userID [%s]", userID)
 
-// Locate func.
-func (s *Session) Locate(sessionID string) (interface{}, error) {
-	s.RLock()
-	defer s.RUnlock()
-
-	v, ok := s.Data[sessionID]
-	if !ok {
-		return "", errSessionNotFound
-	}
-
-	log.Printf("Locate : sessionID [%s]", sessionID)
-	if len(v) < 1 {
-		return "", errSessionNotFound
-	}
-	return v, nil
-}
-
-// Create func.
-func (s *Session) Create(userID string) (string, error) {
-	s.RLock()
-	defer s.RUnlock()
-
-	log.Printf("Create : userID [%s]", userID)
-
-	if len(userID) < 1 {
-		return "", errInvalidUserID
+	pass, ok := s.Users[userID]
+	if !ok || pass != password {
+		return errInvalidCredentials
 	}
 
 	s.Data[userID] = uuid.NewV4().String()
-	return s.Data[userID], nil
+	return nil
 }
 
-// Delete func.
-func (s *Session) Delete(sessionID string) error {
+// Close deletes current session of Identity.
+func (s *Authenticationer) Close(ctx qra.Identity) error {
 	s.RLock()
 	defer s.RUnlock()
+
+	userID := ctx.Me()
+	log.Printf("Close : userID [%s]", userID)
+
+	var sessionID string
+	err := ctx.Session(&sessionID)
+	if err != nil {
+		log.Printf("Close : get session : err [%s]", err)
+		return err
+	}
 
 	delete(s.Data, sessionID)
 	return nil

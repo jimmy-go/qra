@@ -27,18 +27,15 @@ package rawmanager
 import "github.com/jimmy-go/qra"
 
 var (
-	sessions    *Session
-	accounts    *Account
-	roles       *Role
-	permissions *Permission
-	actions     *Action
+	authentication *Authenticationer
+	designation    *Designationer
 )
 
 // Connect starts the manager.
 // In most common cases here you start third party connections
 // as databases, clients, etc.
 func Connect() error {
-	sessions = &Session{
+	authentication = &Authenticationer{
 		Data: make(map[string]string),
 		// users simulates database user validation.
 		// user:password key set.
@@ -48,79 +45,38 @@ func Connect() error {
 			"user2@mail.com": "abcdef",
 		},
 	}
-	accounts = &Account{
-		// Data is a collection of accounts created on the way.
-		// a real qra-manager can has access to database.
-		Data: make(map[string]string),
-	}
-	roles = &Role{
-		Data:       make(map[string]string),
-		Collection: []string{"admin", "user"},
-		// roles by users.
-		Users: map[string][]string{
-			"admin@mail.com": []string{"admin", "user"},
-			"user1@mail.com": []string{"user"},
-			"user2@mail.com": []string{"user", "blank"},
-		},
-	}
-	permissions = &Permission{
+	designation = &Designationer{
 		// Data contains user and resourceID where he can edit.
 		Data: map[string][]string{
 			// admin can edit himself and user1 and user2.
 			"admin@mail.com": []string{
-				"admin@mail.com",
-				"user1@mail.com",
-				"user2@mail.com",
+				"read:admins",
+				"read:users",
+				"read:admin@mail.com",
+				"write:admin@mail.com",
+				"read:user1@mail.com",
+				"read:user2@mail.com",
 			},
 			// user1 has permissions over himself only.
 			"user1@mail.com": []string{
-				"user1@mail.com",
+				"read:users",
+				"read:user1@mail.com",
+				"write:user1@mail.com",
 			},
 			// user2 has permissions over himself only.
 			"user2@mail.com": []string{
-				"user2@mail.com",
+				"read:users",
+				"read:user2@mail.com",
+				"write:user2@mail.com",
 			},
 		},
-	}
-	actions = &Action{
-		// Data contains user and his allowed actions.
-		Data: map[string][]string{
-			// admin can create, edit or delete users.
-			"admin@mail.com": []string{
-				"user-create",
-				"user-edit",
-				"user-delete",
-			},
-			// user1 has allowed edit users, create, edit
-			// and delete checklist items.
-			"user1@mail.com": []string{
-				"user-edit",
-				"checklist-create",
-				"checklist-edit",
-				"checklist-delete",
-			},
-			// user2 has allowed edit users, create, edit
-			// and delete checklist items.
-			"user2@mail.com": []string{
-				"user-edit",
-				"checklist-create",
-				"checklist-edit",
-				"checklist-delete",
-			},
+		// Share it permissions.
+		Share: map[string]string{
+			"admin@mail.com": "user2@mail.com",
 		},
 	}
 
-	//	log.Printf("RawManager : sessions [%v]", sessions)
-	//	log.Printf("RawManager : accounts [%v]", accounts)
-	//	log.Printf("RawManager : roles [%v]", roles)
-	//	log.Printf("RawManager : permissions [%v]", permissions)
-	//	log.Printf("RawManager : actions [%v]", actions)
-
-	// register qra default manager or panics.
-	qra.MustRegisterSessioner(sessions)
-	qra.MustRegisterAccounter(accounts)
-	qra.MustRegisterRoler(roles)
-	qra.MustRegisterPermissioner(permissions)
-	qra.MustRegisterActioner(actions)
+	qra.MustRegisterAuthentication(authentication)
+	qra.MustRegisterDesignation(designation)
 	return nil
 }
