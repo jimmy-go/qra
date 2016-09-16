@@ -38,8 +38,8 @@ FOR EACH ROW
     EXECUTE PROCEDURE update_modified_column();
 
 -- create admin@mail.com password: admin123
-INSERT INTO identity (name,password)
-VALUES('admin@mail.com','$2a$10$YcbHZJl1z9Mo61ZWsykCAecfJfOxTHT1.mUGJhakrONOBiywP6Wu.');
+-- INSERT INTO identity (name,password)
+-- VALUES('admin@mail.com','$2a$10$YcbHZJl1z9Mo61ZWsykCAecfJfOxTHT1.mUGJhakrONOBiywP6Wu.');
 
 CREATE TABLE session (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),

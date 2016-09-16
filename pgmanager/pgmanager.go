@@ -31,12 +31,15 @@ import (
 	// import driver in main
 	// _ "github.com/lib/pq"
 
+	"bufio"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha512"
 	"errors"
+	"fmt"
 	"io"
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -103,12 +106,16 @@ func systemChecksum() error {
 		log.Printf("system identity not found: creating system")
 
 		// TODO; generate random password.
-		randpass := make([]byte, 64)
+		randpass := make([]byte, 10)
 		_, err := rand.Read(randpass)
 		if err != nil {
 			log.Printf("can't  create system identity : err [%s]", err)
 			return errSystemNotFound
 		}
+
+		randpass = []byte("someRandomPass")
+
+		log.Printf("SYSTEM IDENTITY PASSWORD: %s", string(randpass))
 
 		sysPassHash, err := bcrypt.GenerateFromPassword(randpass, bcrypt.DefaultCost)
 		if err != nil {
@@ -116,33 +123,16 @@ func systemChecksum() error {
 			return errSystemNotFound
 		}
 
-		err = Db.Get(&systemID, `
-			INSERT INTO identity
-			(name,password)
-			VALUES($1,$2)
-			RETURNING id;
-		`, "system", sysPassHash)
+		err = makeUser("system", sysPassHash)
 		if err != nil {
 			log.Printf("can't  create system identity : err [%s]", err)
 			return errSystemNotFound
 		}
 
-		mac := hmac.New(sha512.New, randpass)
-		mac.Write(randpass)
-		signature := mac.Sum(nil)
-
-		// create permission catalog.
-
 		// permission for 2 years.
 		expiresAt := time.Now().UTC().Add(24 * time.Hour * 365 * 2)
 
-		var perID string
-		err = Db.Get(&perID, `
-			INSERT INTO designation
-			(identity,permission,resource,issuer_id,issuer_signature,expires_at)
-			VALUES ($1,$2,$3,$4,$5,$6)
-			RETURNING id;
-			`, "system", "session-on", "terminal", systemID, signature, expiresAt)
+		err = makePermission("system", "session-on", "terminal", "system", string(randpass), expiresAt)
 		if err != nil {
 			log.Printf("can't  create system identity : err [%s]", err)
 			return errSystemNotFound
@@ -152,12 +142,175 @@ func systemChecksum() error {
 	}
 	var c int
 	err = Db.Get(&c, `
-		SELECT count(id) FROM designation;
+		SELECT count(id) FROM identity;
 	`)
-	if err != nil || c < 1 {
-		return errPermissionNotFound
+	if err != nil {
+		log.Printf("users not found : err [%s]", err)
+	}
+	if c < 2 {
+		ReadLoop()
 	}
 	return nil
+}
+
+func makePermission(identity, permission, resource, issuerID, password string, expiresAt time.Time) error {
+	// locate identity.
+	var ssuer struct {
+		ID       string `db:"id"`
+		Password []byte `db:"password"`
+	}
+	err := Db.Get(&ssuer, `
+			SELECT id,password FROM identity WHERE name=$1;
+	`, issuerID)
+	if err != nil {
+		return err
+	}
+
+	// validate password.
+
+	err = bcrypt.CompareHashAndPassword(ssuer.Password, []byte(password))
+	if err != nil {
+		return err
+	}
+
+	// generate signature.
+
+	mac := hmac.New(sha512.New, ssuer.Password)
+	mac.Write(ssuer.Password)
+	signature := mac.Sum(nil)
+
+	var perID string
+	err = Db.Get(&perID, `
+			INSERT INTO designation
+			(identity,permission,resource,issuer_id,issuer_signature,expires_at)
+			VALUES ($1,$2,$3,$4,$5,$6)
+			RETURNING id;
+			`, identity, permission, resource, ssuer.ID, signature, expiresAt)
+	return err
+}
+
+func makeUser(username string, passwordHash []byte) error {
+	var s string
+	err := Db.Get(&s, `
+			INSERT INTO identity
+			(name,password)
+			VALUES($1,$2)
+			RETURNING id;
+		`, username, passwordHash)
+	return err
+}
+
+// ReadLoop starts an infinite loop to read the user's input.
+func ReadLoop() {
+
+	/// TODO; options: 1 create user, 2 give permission, 3 delete identity
+
+	fmt.Println("")
+	fmt.Println("MANAGER IDENTITY REQUIRED")
+	fmt.Println("write manager username")
+
+	var username string
+	var password string
+	var systempassword string
+	var permres string
+
+	prompt := map[int]string{
+		0: "Enter username",
+		1: "Enter password",
+		2: "Confirm user? [yes/no]",
+		3: "New user permission [permission:resource][exit]",
+		4: "Enter system password",
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	var step int
+	for {
+		data, _, err := reader.ReadLine()
+		if err != nil {
+			log.Printf("Something happen : err [%s]", err)
+			return
+		}
+		line := string(data)
+
+		switch step {
+		case 0:
+			if username == "" && len(line) > 9 {
+				username = line
+				step++
+			}
+		case 1:
+			if password == "" && len(line) > 6 {
+				password = line
+				step++
+			}
+		case 2:
+			if line == "no" {
+				username = ""
+				password = ""
+				step = 0
+				continue
+			}
+			if line == "yes" {
+				passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+				if err != nil {
+					log.Printf("can't  create system identity : err [%s]", err)
+					return
+				}
+				err = makeUser(username, passHash)
+				if err != nil {
+					log.Printf("can't  create system identity : err [%s]", err)
+					continue
+				}
+				step++
+			}
+		case 3:
+			if line == "exit" {
+				return
+			}
+			if permres == "" && len(line) > 1 {
+				permres = line
+			}
+			x := strings.Split(permres, ":")
+			if len(x) != 2 {
+				log.Printf("Permission format must be [permission:resource]")
+				continue
+			}
+			step++
+		case 4:
+			if systempassword == "" && len(line) > 10 {
+				systempassword = line
+				step++
+				continue
+			}
+		case 5:
+			x := strings.Split(permres, ":")
+			if len(x) != 2 {
+				log.Printf("Permission format must be [permission:resource]")
+				continue
+			}
+
+			expiresAt := time.Now().UTC().Add(24 * time.Hour * 365)
+			err = makePermission(username, x[0], x[1], "system", systempassword, expiresAt)
+			if err != nil {
+				log.Printf("can't  create system identity : err [%s]", err)
+				permres = ""
+				systempassword = ""
+				step = 3
+				continue
+			}
+			username = ""
+			password = ""
+			permres = ""
+			systempassword = ""
+			step = 0
+			continue
+		}
+
+		msg, ok := prompt[step]
+		if ok {
+			fmt.Println(msg)
+		}
+	}
 }
 
 // Authenticationer struct
