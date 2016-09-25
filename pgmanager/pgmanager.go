@@ -31,26 +31,26 @@ import (
 	// import driver in main
 	// _ "github.com/lib/pq"
 
-	"bufio"
+	"bytes"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha512"
 	"errors"
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/jimmy-go/pgwp"
 	"github.com/jimmy-go/qra"
 	"github.com/satori/go.uuid"
 )
-
-// TODO;
 
 var (
 	authentication *Authenticationer
@@ -66,14 +66,9 @@ var (
 )
 
 // Connect starts the manager.
-func Connect(driver, connectURL string) error {
+func Connect(driver, connectURL string, terminalSession bool) error {
 	var err error
 	Db, err = pgwp.Connect(driver, connectURL, 5, 5)
-	if err != nil {
-		return err
-	}
-
-	err = systemChecksum()
 	if err != nil {
 		return err
 	}
@@ -87,17 +82,23 @@ func Connect(driver, connectURL string) error {
 
 	qra.MustRegisterAuthentication(authentication)
 	qra.MustRegisterDesignation(designation)
+
+	err = systemCheck(terminalSession)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-// systemChecksum will verifies several things:
+// systemCheck will verifies several things:
 //		user system exists.
 //		permission catalog exists.
 //		system is owner of permission catalog.
 //		system permission designation.
 //		TODO; if not manager user present generate one
 //		with custom permission designation?
-func systemChecksum() error {
+func systemCheck(terminalSession bool) error {
 	var systemID string
 	err := Db.Get(&systemID, `
 		SELECT id FROM identity WHERE name='system';
@@ -105,17 +106,8 @@ func systemChecksum() error {
 	if err != nil {
 		log.Printf("system identity not found: creating system")
 
-		// TODO; generate random password.
-		randpass := make([]byte, 10)
-		_, err := rand.Read(randpass)
-		if err != nil {
-			log.Printf("can't  create system identity : err [%s]", err)
-			return errSystemNotFound
-		}
-
-		randpass = []byte("someRandomPass")
-
-		log.Printf("SYSTEM IDENTITY PASSWORD: %s", string(randpass))
+		// generate random password.
+		randpass := []byte(RandString(64))
 
 		sysPassHash, err := bcrypt.GenerateFromPassword(randpass, bcrypt.DefaultCost)
 		if err != nil {
@@ -138,7 +130,9 @@ func systemChecksum() error {
 			return errSystemNotFound
 		}
 
-		log.Printf("SYSTEM IDENTITY PASSWORD: %x", randpass)
+		log.Printf("SYSTEM IDENTITY PASSWORD: %s", string(randpass))
+
+		terminalSession = true
 	}
 	var c int
 	err = Db.Get(&c, `
@@ -147,8 +141,9 @@ func systemChecksum() error {
 	if err != nil {
 		log.Printf("users not found : err [%s]", err)
 	}
-	if c < 2 {
-		ReadLoop()
+
+	if terminalSession {
+		Terminal()
 	}
 	return nil
 }
@@ -200,115 +195,121 @@ func makeUser(username string, passwordHash []byte) error {
 	return err
 }
 
-// ReadLoop starts an infinite loop to read the user's input.
-func ReadLoop() {
-
-	/// TODO; options: 1 create user, 2 give permission, 3 delete identity
-
-	fmt.Println("")
-	fmt.Println("MANAGER IDENTITY REQUIRED")
-	fmt.Println("write manager username")
-
-	var username string
-	var password string
-	var systempassword string
-	var permres string
-
-	prompt := map[int]string{
-		0: "Enter username",
-		1: "Enter password",
-		2: "Confirm user? [yes/no]",
-		3: "New user permission [permission:resource][exit]",
-		4: "Enter system password",
+// Terminal starts an infinite loop to read the user's input.
+func Terminal() {
+	ost, err := terminal.MakeRaw(0)
+	if err != nil {
+		panic(err)
 	}
+	defer terminal.Restore(0, ost)
 
-	reader := bufio.NewReader(os.Stdin)
-	var step int
+	f, err := os.OpenFile("qra_pgmanager.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		log.Printf("Err [%s]", err)
+		return
+	}
+	log.SetOutput(f)
+
+	defer func() {
+		f.Close()
+		os.Remove(f.Name())
+
+		log.SetOutput(os.Stdout)
+	}()
+
+	// this represents user in terminal
+	ctx := &Context{}
+
+	term := terminal.NewTerminal(os.Stdin, "Help [:h]. Quit [:q]\n\rUsername:\n\r")
 	for {
-		data, _, err := reader.ReadLine()
+		l, err := term.ReadLine()
 		if err != nil {
-			log.Printf("Something happen : err [%s]", err)
+			log.Printf("Error read line : err [%s]", err)
 			return
 		}
-		line := string(data)
 
-		switch step {
-		case 0:
-			if username == "" && len(line) > 9 {
-				username = line
-				step++
-			}
-		case 1:
-			if password == "" && len(line) > 6 {
-				password = line
-				step++
-			}
-		case 2:
-			if line == "no" {
-				username = ""
-				password = ""
-				step = 0
-				continue
-			}
-			if line == "yes" {
-				passHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-				if err != nil {
-					log.Printf("can't  create system identity : err [%s]", err)
-					return
-				}
-				err = makeUser(username, passHash)
-				if err != nil {
-					log.Printf("can't  create system identity : err [%s]", err)
-					continue
-				}
-				step++
-			}
-		case 3:
-			if line == "exit" {
-				return
-			}
-			if permres == "" && len(line) > 1 {
-				permres = line
-			}
-			x := strings.Split(permres, ":")
-			if len(x) != 2 {
-				log.Printf("Permission format must be [permission:resource]")
-				continue
-			}
-			step++
-		case 4:
-			if systempassword == "" && len(line) > 10 {
-				systempassword = line
-				step++
-				continue
-			}
-		case 5:
-			x := strings.Split(permres, ":")
-			if len(x) != 2 {
-				log.Printf("Permission format must be [permission:resource]")
-				continue
-			}
-
-			expiresAt := time.Now().UTC().Add(24 * time.Hour * 365)
-			err = makePermission(username, x[0], x[1], "system", systempassword, expiresAt)
-			if err != nil {
-				log.Printf("can't  create system identity : err [%s]", err)
-				permres = ""
-				systempassword = ""
-				step = 3
-				continue
-			}
-			username = ""
-			password = ""
-			permres = ""
-			systempassword = ""
-			step = 0
-			continue
+		var prefix string
+		if len(l) > 1 {
+			prefix = l[:2]
 		}
 
-		msg, ok := prompt[step]
-		if ok {
-			fmt.Println(msg)
+		switch prefix {
+		case ":q":
+			return
+		case "1:":
+			term.SetPrompt("Give permission to identity with format: identity:permission:resource\n\r")
+
+			x := strings.Split(l, ":")
+			if len(x) != 3 {
+				fmt.Printf("invalid format")
+				continue
+			}
+
+			// one month permission.
+			expiresAt := time.Now().UTC().Add(24 * time.Hour * 30)
+
+			err := designation.Allow(ctx, x[1], x[2], x[0], expiresAt)
+			if err != nil {
+				fmt.Printf("can't read permissions")
+				continue
+			}
+		case "2:":
+			buf := bytes.NewBuffer([]byte{})
+			err = designation.Search(ctx, buf, "create-identity:*")
+			if err != nil {
+				fmt.Printf("You don't have allowed create identity\n\r")
+				continue
+			}
+		case ":h":
+			fmt.Printf("\n\rShare permission (1:<Identity>:<Permission>:<Resource>)")
+			fmt.Printf("\n\rCreate identity (2:<Identity>:<Password>)")
+			fmt.Printf("\n\rLogout (:5)\n\r")
+		case "5:", ":5":
+			err := authentication.Close(ctx)
+			if err != nil {
+				fmt.Printf("can't close session\n\r")
+				continue
+			}
+			fmt.Printf("Session closed\n\r")
+			term.SetPrompt("Help [:h]. Quit [:q]\n\rUsername:\n\r")
+			ctx.Username = ""
+			ctx.Token = ""
+		default:
+
+			// Login process.
+			if len(ctx.Token) < 1 {
+				if ctx.Username == "" && len(l) > 0 {
+					ctx.Username = l
+
+					p, err := term.ReadPassword("write password\n\r")
+					if err != nil {
+						fmt.Printf("can't read password : err [%s]", err)
+						ctx.Username = ""
+						continue
+					}
+
+					// authentication
+
+					err = authentication.Authenticate(ctx, p, &ctx.Token)
+					if err != nil {
+						fmt.Printf("Invalid username or password\n\r")
+						ctx.Username = ""
+						continue
+					}
+
+					// session on terminal permission validation.
+
+					buf := bytes.NewBuffer([]byte{})
+					err = designation.Search(ctx, buf, "session-on:terminal")
+					if err != nil {
+						fmt.Printf("You don't have allowed terminal sessions\n\r")
+						ctx.Username = ""
+						continue
+					}
+
+					term.SetPrompt(ctx.Username + ":\n\r")
+				}
+			}
 		}
 	}
 }
@@ -366,8 +367,7 @@ func (s *Authenticationer) Authenticate(ctx qra.Identity, password string, dst i
 // Close deletes current session of Identity.
 func (s *Authenticationer) Close(ctx qra.Identity) error {
 
-	userID := ctx.Me()
-	log.Printf("Close : userID [%s]", userID)
+	me := ctx.Me()
 
 	var sessionID string
 	err := ctx.Session(&sessionID)
@@ -375,15 +375,17 @@ func (s *Authenticationer) Close(ctx qra.Identity) error {
 		log.Printf("Close : get session : err [%s]", err)
 		return err
 	}
-	log.Printf("Close : get session : sID [%s]", sessionID)
+	log.Printf("Close : get session : username [%s] session id [%s]", me, sessionID)
 
 	var res string
 	err = s.DB.Get(&res, `
-		DELETE FROM session WHERE token=$1 RETURNING 'OK';
+		UPDATE session SET active = FALSE WHERE token=$1 RETURNING id;
 	`, sessionID)
 	if err != nil {
 		log.Printf("Close : remove session : err [%s]", err)
 	}
+
+	log.Printf("Close : res [%s]", res)
 
 	return err
 }
@@ -460,19 +462,7 @@ func (p *Designationer) Allow(ctx qra.Identity, permission, resource, dst string
 
 	var sessionID string
 	err = p.DB.Get(&sessionID, `
-		SELECT token FROM session
-		WHERE token=$1;
-	`, token)
-	if err != nil {
-		log.Printf("Allow : locate session : err [%s]", err)
-	}
-
-	// locate identity permission.
-
-	var sID string
-	err = p.DB.Get(&sID, `
-		SELECT token FROM session
-		WHERE token=$1;
+		SELECT token FROM session WHERE token=$1;
 	`, token)
 	if err != nil {
 		log.Printf("Allow : locate session : err [%s]", err)
@@ -515,7 +505,7 @@ func (p *Designationer) Allow(ctx qra.Identity, permission, resource, dst string
 		return errPermissionNotFound
 	}
 
-	return errPermissionNotFound
+	return nil
 }
 
 // Revoke method revokes a permission that Identity give to dst.
@@ -527,4 +517,55 @@ func (p *Designationer) Revoke(ctx qra.Identity, permission, dst string) error {
 	log.Printf("Revoke : userID [%v]", userID)
 
 	return nil
+}
+
+// Ctx returns a context identity.
+func Ctx(username string) qra.Identity {
+	c := &Context{
+		Username: username,
+	}
+	return c
+}
+
+// Context satisfies qra.Identity interface.
+type Context struct {
+	Username string
+	Token    string
+}
+
+// Me method satisfies qra.Identity.
+func (c Context) Me() string {
+	return c.Username
+}
+
+// Session method satisfies qra.Identity.
+func (c Context) Session(dst interface{}) error {
+	p := reflect.ValueOf(dst)
+	log.Printf("Session : type [%v]", p.Type())
+	log.Printf("Session : canset [%v]", p.CanSet())
+	v := p.Elem()
+	log.Printf("Session : v canset [%v]", v.CanSet())
+	v.SetString(c.Token)
+
+	log.Printf("Session : dst [%v] token [%s]", dst, c.Token)
+	return nil
+}
+
+const (
+	letterBytes   = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890+-.,<>;:_{}[]¿?=)("
+	letterIdxBits = 6                    // 6 bits to represent a letter index
+	letterIdxMask = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+)
+
+// RandString func.
+func RandString(n int) string {
+	rand.Seed(time.Now().UnixNano())
+	b := make([]byte, n)
+	for i := 0; i < n; {
+		if idx := int(rand.Int63() & letterIdxMask); idx < len(letterBytes) {
+			b[i] = letterBytes[idx]
+			i++
+		}
+	}
+	return string(b)
 }

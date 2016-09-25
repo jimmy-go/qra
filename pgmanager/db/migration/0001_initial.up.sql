@@ -46,6 +46,7 @@ CREATE TABLE session (
     identity_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
     token text,
     expires_at timestamp with time zone,
+    active bool,
     created_at timestamp with time zone DEFAULT now(),
     CONSTRAINT session_pkey PRIMARY KEY (id)
 )
