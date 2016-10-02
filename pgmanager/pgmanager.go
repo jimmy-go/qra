@@ -267,41 +267,17 @@ func Terminal() {
 		case ":q":
 			return
 		case "1:":
-			// term.SetPrompt("Give permission to identity with format: identity:permission:resource\n\r")
-			x := strings.Split(l, ":")
-			log.Printf("x [%v]", x)
-			if len(x) != 4 {
-				fmt.Printf("invalid format. Must be '1:identity:permission:resource'.\n\r")
-				continue
-			}
-
-			p, err := term.ReadPassword("write identity password\n\r")
-			if err != nil {
-				fmt.Printf("can't read password : err [%s]", err)
-				continue
-			}
-
-			// one month permission.
-			expiresAt := time.Now().UTC().Add(24 * time.Hour * 30)
-
-			err = designation.Allow(ctx, p, x[2], x[3], x[1], expiresAt)
-			if err != nil {
-				fmt.Printf("can't share permission\n\r")
-				continue
-			}
-			fmt.Printf("New permission shared\n\r")
-			term.SetPrompt(ctx.Username + ":\n\r")
-		case "2:":
 			x := strings.Split(l, ":")
 			if len(x) != 2 {
-				fmt.Printf("Write '2:identity'.\n\r")
+				fmt.Printf("Write '1:identity'.\n\r")
 				continue
 			}
 
 			buf := bytes.NewBuffer([]byte{})
 			err = designation.Search(ctx, buf, "identity-create:*")
 			if err != nil {
-				fmt.Printf("You don't have allowed create identity\n\r")
+				log.Printf("search : err [%s]", err)
+				fmt.Printf("You don't have 'identity-create' permission.\n\r")
 				continue
 			}
 
@@ -320,9 +296,61 @@ func Terminal() {
 			}
 			fmt.Printf("New Identity created: %s\n\r", x[1])
 			term.SetPrompt(ctx.Username + ":\n\r")
+		case "2:":
+			// term.SetPrompt("Give permission to identity with format: identity:permission:resource\n\r")
+			x := strings.Split(l, ":")
+			log.Printf("x [%v]", x)
+			if len(x) != 4 {
+				fmt.Printf("Invalid format. Must be '2:identity:permission:resource'.\n\r")
+				continue
+			}
+
+			p, err := term.ReadPassword("write identity password\n\r")
+			if err != nil {
+				log.Printf("read password : err [%s]", err)
+				fmt.Printf("Can't read password : err [%s]", err)
+				continue
+			}
+
+			// one month permission.
+			expiresAt := time.Now().UTC().Add(24 * time.Hour * 30)
+
+			err = designation.Allow(ctx, p, x[2], x[3], x[1], expiresAt)
+			if err != nil {
+				log.Printf("revoke : err [%s]", err)
+				fmt.Printf("Can't share permission\n\r")
+				continue
+			}
+			fmt.Printf("New permission shared\n\r")
+			term.SetPrompt(ctx.Username + ":\n\r")
+		case "3:":
+			// term.SetPrompt("Give permission to identity with format: identity:permission:resource\n\r")
+			x := strings.Split(l, ":")
+			log.Printf("x [%v]", x)
+			if len(x) != 4 {
+				fmt.Printf("Invalid format. Must be '3:identity:permission:resource'.\n\r")
+				continue
+			}
+
+			p, err := term.ReadPassword("write identity password\n\r")
+			if err != nil {
+				log.Printf("read password : err [%s]", err)
+				fmt.Printf("Can't read password : err [%s]", err)
+				continue
+			}
+
+			err = designation.Revoke(ctx, p, x[2], x[3], x[1])
+			if err != nil {
+				log.Printf("revoke : err [%s]", err)
+				fmt.Printf("Can't revoke permission\n\r")
+				continue
+			}
+			fmt.Printf("permission removed\n\r")
+			term.SetPrompt(ctx.Username + ":\n\r")
 		case ":h":
-			fmt.Printf("\n\rShare permission (1:<Identity>:<Permission>:<Resource>)")
-			fmt.Printf("\n\rCreate identity (2:<Identity>)")
+			fmt.Printf("\n\rCreate identity (1:<Identity>)")
+			fmt.Printf("\n\rShare permission (2:<Identity>:<Permission>:<Resource>)")
+			fmt.Printf("\n\rRevoke permission (3:<Identity>:<Permission>:<Resource>)")
 			fmt.Printf("\n\rLogout (5:)\n\r")
 		case "5:", ":5":
 			err := authentication.Close(ctx)
@@ -605,10 +633,71 @@ func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, 
 
 // Revoke method revokes a permission that Identity give to dst.
 //
-// Every revoke operation verifies signed RSA keys encription.
+// Every revoke operation verifies signed x509 encription.
 func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource, dst string) error {
 	me := ctx.Me()
 	log.Printf("Revoke : username [%v]", me)
+
+	// validate session
+
+	var token string
+	err := ctx.Session(&token)
+	if err != nil {
+		return err
+	}
+
+	var issuerID string
+	err = p.DB.Get(&issuerID, `
+		SELECT identity_id FROM session WHERE token=$1;
+	`, token)
+	if err != nil {
+		log.Printf("Revoke : locate session : err [%s]", err)
+		return err
+	}
+
+	// validate password
+
+	var passhash []byte
+	err = p.DB.Get(&passhash, `
+		SELECT password FROM identity WHERE name=$1;
+	`, me)
+	if err != nil {
+		log.Printf("Revoke : locate identity : err [%s]", err)
+		return err
+	}
+
+	err = bcrypt.CompareHashAndPassword(passhash, []byte(password))
+	if err != nil {
+		return err
+	}
+
+	// TODO; verify sign
+
+	var des struct {
+		ID        string `db:"id"`
+		Signature []byte `db:"issuer_signature"`
+	}
+	err = p.DB.Get(&des, `
+		SELECT id,issuer_signature FROM designation
+		WHERE issuer_id=$1 AND identity=$2 AND
+		permission=$3 AND resource=$4;
+	`, issuerID, dst, permission, resource)
+	if err != nil {
+		log.Printf("Revoke : locate designation : err [%s] issuer id [%s] dst [%s] permission [%s] resource [%s]",
+			err, issuerID, dst, permission, resource)
+		return err
+	}
+
+	// delete from database.
+
+	var res string
+	err = p.DB.Get(&res, `
+		DELETE FROM designation WHERE id=$1 RETURNING 'OK';
+	`, des.ID)
+	if err != nil {
+		log.Printf("Revoke : delete designation : err [%s]", err)
+		return err
+	}
 
 	return nil
 }
@@ -798,7 +887,7 @@ func createCertAndSecret(identity, hosts string) ([]byte, []byte, error) {
 	return publicKeyBuf.Bytes(), privateKeyBuf.Bytes(), nil
 }
 
-// generateSignature takes the private key and sign data.
+// generateSignature takes the x509 private key and sign data.
 func generateSignature(privateKey, data []byte) ([]byte, error) {
 	block, _ := pem.Decode(privateKey)
 	if block == nil {
