@@ -94,11 +94,11 @@ type Designation interface {
 	Search(ctx Identity, writer io.Writer, filter string) error
 
 	// Allow method shares identity permission over resource with dst.
-	Allow(ctx Identity, permission, resource, dst string, expiresAt time.Time) error
+	Allow(ctx Identity, password, permission, resource, dst string, expiresAt time.Time) error
 
 	// Revoke method will revoke a permission that ctx previously
 	// give to dst.
-	Revoke(ctx Identity, permission, dst string) error
+	Revoke(ctx Identity, password, permission, resource, dst string) error
 }
 
 // RegisterAuthentication replaces Authentication of DefaultManager.
@@ -153,11 +153,11 @@ func Search(ctx Identity, writer io.Writer, filter string) error {
 }
 
 // Allow wrapper for DefaultManager.Designation.Allow.
-func Allow(ctx Identity, permission, resource, dst string, expiresAt time.Time) error {
-	return DefaultManager.DesignationAuthorization.Allow(ctx, permission, resource, dst, expiresAt)
+func Allow(ctx Identity, password, permission, resource, dst string, expiresAt time.Time) error {
+	return DefaultManager.DesignationAuthorization.Allow(ctx, password, permission, resource, dst, expiresAt)
 }
 
 // Revoke wrapper for DefaultManager.Designation.Revoke.
-func Revoke(ctx Identity, permission, dst string) error {
-	return DefaultManager.DesignationAuthorization.Revoke(ctx, permission, dst)
+func Revoke(ctx Identity, password, permission, resource, dst string) error {
+	return DefaultManager.DesignationAuthorization.Revoke(ctx, password, permission, resource, dst)
 }

@@ -1,3 +1,4 @@
+-- contains identity, session, designation, trail
 /*
     PostgreSQL default migration for QRA manager.
 */
@@ -21,8 +22,10 @@ CREATE TABLE identity (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
     name text,
     password bytea,
-    created_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now(),
+    private_key bytea,
+    public_key bytea,
+    created_at timestamp DEFAULT now(),
+    updated_at timestamp DEFAULT now(),
     CONSTRAINT identity_pkey PRIMARY KEY (id)
 )
 WITH (
@@ -37,26 +40,23 @@ ON identity
 FOR EACH ROW
     EXECUTE PROCEDURE update_modified_column();
 
--- create admin@mail.com password: admin123
--- INSERT INTO identity (name,password)
--- VALUES('admin@mail.com','$2a$10$YcbHZJl1z9Mo61ZWsykCAecfJfOxTHT1.mUGJhakrONOBiywP6Wu.');
-
 CREATE TABLE session (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
     identity_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
     token text,
-    expires_at timestamp with time zone,
     active bool,
-    created_at timestamp with time zone DEFAULT now(),
+    expires_at timestamp,
+    created_at timestamp DEFAULT now(),
     CONSTRAINT session_pkey PRIMARY KEY (id)
 )
 WITH (
     OIDS=FALSE
 );
 
-DROP TYPE IF EXISTS perm;
+DROP TYPE IF EXISTS PERM;
 
--- permission catalog. TODO; add more common permissions
+-- permission catalog.
+-- TODO; add more common permissions
 CREATE TYPE PERM AS ENUM(
 'session-on','identity-create','identity-edit','identity-delete','read','write',
 'delete'
@@ -64,13 +64,13 @@ CREATE TYPE PERM AS ENUM(
 
 CREATE TABLE designation (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
+    issuer_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
+    issuer_signature bytea,
     identity text,
     permission PERM,
     resource text,
-    issuer_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
-    issuer_signature bytea,
-    expires_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now(),
+    expires_at timestamp,
+    created_at timestamp DEFAULT now(),
     CONSTRAINT designation_pkey PRIMARY KEY (id)
 )
 WITH (
@@ -84,7 +84,7 @@ CREATE INDEX designation_resource_idx ON designation (resource);
 CREATE TABLE trail (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
     designation_id uuid REFERENCES designation (id) ON DELETE RESTRICT,
-    created_at timestamp with time zone DEFAULT now(),
+    created_at timestamp DEFAULT now(),
     CONSTRAINT trail_pkey PRIMARY KEY (id)
 )
 WITH (
