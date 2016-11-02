@@ -74,8 +74,12 @@ var (
 	errInvalidCredentials    = errors.New("pgmanager: invalid username or password")
 	errResourceNotSpecified  = errors.New("pgmanager: resource not specified")
 	errInvalidPasswordLength = errors.New("pgmanager: invalid password size")
+
 	// ErrOwnSign error returned when an identity try to auto sign a permission.
 	ErrOwnSign = errors.New("pgmanager: can't allow own permission")
+
+	// ErrIdentityNotFound error returned when identity not exists in database.
+	ErrIdentityNotFound = errors.New("pgmanager: identity not found")
 )
 
 const (
@@ -140,7 +144,7 @@ func systemCheck(terminalSession bool) error {
 	if err != nil {
 		log.Printf("system identity not found: creating system")
 
-		// generate random password.
+		// generate random password for "system".
 		randpass := MakePassword(64)
 
 		_, err = makeUser(System, randpass)
@@ -153,12 +157,15 @@ func systemCheck(terminalSession bool) error {
 			Username: System,
 		}
 
-		// auth
+		// generate session
+
 		err = authentication.Authenticate(ctx, randpass, &ctx.Token)
 		if err != nil {
 			log.Printf("can't  create system identity : err [%s]", err)
 			return errSystemNotFound
 		}
+
+		// allow terminal session for identity "system"
 
 		expiresAt := time.Now().UTC().Add(PermissionDuration)
 		err = designation.Allow(ctx, randpass, PermSessionOn, "terminal", System, expiresAt)
@@ -167,11 +174,15 @@ func systemCheck(terminalSession bool) error {
 			return errSystemNotFound
 		}
 
+		// allow create identity for user "system"
+
 		err = designation.Allow(ctx, randpass, PermIdentityCreate, "*", System, expiresAt)
 		if err != nil {
 			log.Printf("can't  create system identity : err [%s]", err)
 			return errSystemNotFound
 		}
+
+		// show once system password
 
 		log.Printf("SYSTEM IDENTITY PASSWORD: %s", randpass)
 
@@ -212,11 +223,11 @@ func makeUser(username, password string) (string, error) {
 
 	var s string
 	err = Db.Get(&s, `
-			INSERT INTO identity
-			(name,password,private_key,public_key)
-			VALUES($1,$2,$3,$4)
-			RETURNING id;
-		`, username, passHash, ciphertext, pubKey)
+		INSERT INTO identity
+		(name,password,private_key,public_key)
+		VALUES($1,$2,$3,$4)
+		RETURNING id;
+	`, username, passHash, ciphertext, pubKey)
 	pubKey = nil
 	privKey = nil
 	passHash = nil
@@ -232,6 +243,8 @@ func Terminal() {
 	}
 	defer terminal.Restore(0, ost)
 
+	// create temporal file for log output
+
 	f, err := os.OpenFile("qra_pgmanager.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if err != nil {
 		log.Printf("Terminal : create temporal log : err [%s]", err)
@@ -242,6 +255,7 @@ func Terminal() {
 	defer func() {
 		f.Close()
 		os.Remove(f.Name())
+
 		// return log to stdout
 		log.SetOutput(os.Stdout)
 	}()
@@ -297,7 +311,7 @@ func Terminal() {
 			fmt.Printf("New Identity created: %s\n\r", x[1])
 			term.SetPrompt(ctx.Username + ":\n\r")
 		case "2:":
-			// term.SetPrompt("Give permission to identity with format: identity:permission:resource\n\r")
+
 			x := strings.Split(l, ":")
 			log.Printf("x [%v]", x)
 			if len(x) != 4 {
@@ -324,7 +338,7 @@ func Terminal() {
 			fmt.Printf("New permission shared\n\r")
 			term.SetPrompt(ctx.Username + ":\n\r")
 		case "3:":
-			// term.SetPrompt("Give permission to identity with format: identity:permission:resource\n\r")
+
 			x := strings.Split(l, ":")
 			log.Printf("x [%v]", x)
 			if len(x) != 4 {
@@ -412,10 +426,10 @@ type Authenticationer struct {
 	DB *pgwp.Pool
 }
 
-// IDPass for identity retrieve.
-type IDPass struct {
-	ID   string `db:"id"`
-	Pass []byte `db:"password"`
+// IdentitySimple for identity retrieve.
+type IdentitySimple struct {
+	ID       string `db:"id"`
+	Password []byte `db:"password"`
 }
 
 // Authenticate makes login for Identity.
@@ -423,18 +437,19 @@ func (s *Authenticationer) Authenticate(ctx qra.Identity, password string, dst i
 	me := ctx.Me()
 	log.Printf("Authenticate : username [%s] password [%s]", me, password)
 
-	var iden IDPass
-	err := s.DB.Get(&iden, `
+	var u IdentitySimple
+	err := s.DB.Get(&u, `
 		SELECT id,password FROM identity WHERE name=$1;
 	`, me)
 	if err != nil {
 		return err
 	}
-	if len(iden.Pass) < 1 {
+	// don't waste hashing time
+	if len(u.Password) < 1 {
 		return errInvalidCredentials
 	}
 
-	err = bcrypt.CompareHashAndPassword(iden.Pass, []byte(password))
+	err = bcrypt.CompareHashAndPassword(u.Password, []byte(password))
 	if err != nil {
 		return errInvalidCredentials
 	}
@@ -446,11 +461,10 @@ func (s *Authenticationer) Authenticate(ctx qra.Identity, password string, dst i
 		INSERT INTO session (identity_id,token,expires_at,active)
 		VALUES ($1,$2,$3,$4)
 		RETURNING token;
-	`, iden.ID, token, expiresAt, true)
+	`, u.ID, token, expiresAt, true)
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -472,11 +486,12 @@ func (s *Authenticationer) Close(ctx qra.Identity) error {
 	`, sessionID)
 	if err != nil {
 		log.Printf("Close : remove session : err [%s]", err)
+		return err
 	}
 
 	log.Printf("Close : res [%s]", res)
 
-	return err
+	return nil
 }
 
 // Designationer struct
@@ -484,8 +499,8 @@ type Designationer struct {
 	DB *pgwp.Pool
 }
 
-// Design type from database.
-type Design struct {
+// Designation type from database.
+type Designation struct {
 	ID              string `db:"id"`
 	Identity        string `db:"identity"`
 	Permission      []byte `db:"permission"`
@@ -504,7 +519,6 @@ type Design struct {
 // operations.
 func (p *Designationer) Search(ctx qra.Identity, writer io.Writer, filter string) error {
 	me := ctx.Me()
-	log.Printf("Search : me [%v] filter [%v]", me, filter)
 
 	// TODO; make filter rules
 
@@ -515,7 +529,7 @@ func (p *Designationer) Search(ctx qra.Identity, writer io.Writer, filter string
 	permission := x[0]
 	resource := x[1]
 
-	var des Design
+	var des Designation
 	err := p.DB.Get(&des, `
 		SELECT permission,resource,issuer_signature FROM designation
 		WHERE identity=$1 AND permission=$2 AND resource=$3;
@@ -538,7 +552,7 @@ type NPE struct {
 	PublicKey  []byte `db:"public_key"`
 }
 
-// Allow method share permission from ctx to dst.
+// Allow method share permission from ctx to dst identity.
 func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, dst string, expires time.Time) error {
 	me := ctx.Me()
 	log.Printf("Allow : identity [%v] permission [%s] resource [%s] dst_identity [%s]",
@@ -631,14 +645,20 @@ func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, 
 	return nil
 }
 
-// Revoke method revokes a permission that Identity give to dst.
+// IdentityRevoke selects ID and Signature for comparison.
+type IdentityRevoke struct {
+	ID        string `db:"id"`
+	Signature []byte `db:"issuer_signature"`
+}
+
+// Revoke method revokes a permission that ctx give to dst.
 //
-// Every revoke operation verifies signed x509 encription.
+// Every revoke operation verifies signed x509 encryption.
 func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource, dst string) error {
 	me := ctx.Me()
 	log.Printf("Revoke : username [%v]", me)
 
-	// validate session
+	// identity has session.
 
 	var token string
 	err := ctx.Session(&token)
@@ -652,7 +672,7 @@ func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource,
 	`, token)
 	if err != nil {
 		log.Printf("Revoke : locate session : err [%s]", err)
-		return err
+		return ErrIdentityNotFound
 	}
 
 	// validate password
@@ -668,15 +688,13 @@ func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource,
 
 	err = bcrypt.CompareHashAndPassword(passhash, []byte(password))
 	if err != nil {
-		return err
+		log.Printf("Revoke : invalid credentials : err [%s]", err)
+		return errInvalidCredentials
 	}
 
 	// TODO; verify sign
 
-	var des struct {
-		ID        string `db:"id"`
-		Signature []byte `db:"issuer_signature"`
-	}
+	var des IdentityRevoke
 	err = p.DB.Get(&des, `
 		SELECT id,issuer_signature FROM designation
 		WHERE issuer_id=$1 AND identity=$2 AND
@@ -742,6 +760,8 @@ func AESCBCEncrypt(key, plaintext []byte) ([]byte, error) {
 	size := int(l / aes.BlockSize)
 	mustSize := size*aes.BlockSize + aes.BlockSize
 
+	// generate padding
+
 	if l < mustSize {
 		for i := l; i < mustSize; i++ {
 			plaintext = append(plaintext, []byte(" ")...)
@@ -753,6 +773,7 @@ func AESCBCEncrypt(key, plaintext []byte) ([]byte, error) {
 	}
 
 	// FIXME; validate key size. add padding or check another solution.
+
 	if len(key) < 32 {
 		for i := len(key); i < 32; i++ {
 			key = append(key, []byte(" ")...)
@@ -830,6 +851,7 @@ func AESCBCDecrypt(key, ciphertext []byte) ([]byte, error) {
 // createCertAndSecret generates a x509 cert and returns the
 // public key and private key.
 func createCertAndSecret(identity, hosts string) ([]byte, []byte, error) {
+
 	// generate private key
 
 	priv, err := rsa.GenerateKey(cryptorand.Reader, 2048)
