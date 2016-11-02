@@ -26,12 +26,8 @@ package qra
 
 import (
 	"errors"
-<<<<<<< HEAD
-	"log"
-=======
 	"io"
 	"time"
->>>>>>> release/v0.0.2
 )
 
 var (
@@ -141,131 +137,9 @@ func MustRegisterDesignation(d Designation) {
 	}
 }
 
-<<<<<<< HEAD
-// Login wrapper for Sessioner.Login
-func Login(username, password string) error {
-	log.Printf("QRA : Login : user [%s] pass [%s]", username, password)
-	return DefaultManager.Session.Login(username, password)
-}
-
-// SessionCreate wrapper for Sessioner.Create
-func SessionCreate(userID string) (string, error) {
-	return DefaultManager.Session.Create(userID)
-}
-
-// SessionDelete wrapper for Sessioner.Delete
-func SessionDelete(sessionID string) error {
-	return DefaultManager.Session.Delete(sessionID)
-}
-
-// SessionLocate wrapper for Sessioner.Locate
-func SessionLocate(sessionID string) (interface{}, error) {
-	return DefaultManager.Session.Locate(sessionID)
-}
-
-// AccountCreate wrapper for Accounter.Create
-func AccountCreate(username string) error {
-	return DefaultManager.Account.Create(username)
-}
-
-// AccountDelete wrapper for Accounter.Delete
-func AccountDelete(username string) error {
-	return DefaultManager.Account.Delete(username)
-}
-
-// Delete wrapper for Accounter.Delete
-func Delete(username string) error {
-	return DefaultManager.Account.Delete(username)
-}
-
-// RolesList wrapper for Roler.List
-func RolesList() ([]string, error) {
-	return DefaultManager.Role.List()
-}
-
-// RolesCreate wrapper for Roler.Create
-func RolesCreate(name string, data interface{}) error {
-	return DefaultManager.Role.Create(name, data)
-}
-
-// RolesDelete wrapper for Roler.Delete
-func RolesDelete(name string) error {
-	return DefaultManager.Role.Delete(name)
-}
-
-// UserRoles wrapper for Roler.UserRoles
-func UserRoles(userID string) ([]string, error) {
-	return DefaultManager.Role.UserRoles(userID)
-}
-
-// HasRole wrapper for Roler.HasRole
-func HasRole(userID, roleID string) bool {
-	return DefaultManager.Role.UserHas(userID, roleID)
-}
-
-// UserRoleAdd wrapper for Roler.UserRoleAdd
-func UserRoleAdd(userID, roleID string) error {
-	return DefaultManager.Role.UserRoleAdd(userID, roleID)
-}
-
-// UserRoleRemove wrapper for Roler.UserRoleRemove
-func UserRoleRemove(userID, roleID string) error {
-	return DefaultManager.Role.UserRoleRemove(userID, roleID)
-}
-
-// PermissionsList wrapper for Permissioner.List
-func PermissionsList() ([]string, error) {
-	return DefaultManager.Permission.List()
-}
-
-// PermissionCreate wrapper for Permissioner.Create
-func PermissionCreate(name string, data interface{}) error {
-	return DefaultManager.Permission.Create(name, data)
-}
-
-// PermissionDelete wrapper for Permissioner.Delete
-func PermissionDelete(name string) error {
-	return DefaultManager.Permission.Delete(name)
-}
-
-// UserPermissions wrapper for Permissioner.UserPermissions
-func UserPermissions(userID string) ([]string, error) {
-	return DefaultManager.Permission.UserPermissions(userID)
-}
-
-// HasPermission wrapper for Permissioner.HasPermission
-func HasPermission(userID, permissionID string) bool {
-	return DefaultManager.Permission.UserHas(userID, permissionID)
-}
-
-// UserPermissionAdd wrapper for Permissioner.UserPermissionAdd
-func UserPermissionAdd(userID, permissionID string) error {
-	return DefaultManager.Permission.UserPermissionAdd(userID, permissionID)
-}
-
-// UserPermissionRemove wrapper for Permissioner.UserPermissionRemove
-func UserPermissionRemove(userID, permissionID string) error {
-	return DefaultManager.Permission.UserPermissionRemove(userID, permissionID)
-}
-
-// ActionsList wrapper for Actioner.List
-func ActionsList() ([]string, error) {
-	return DefaultManager.Action.List()
-}
-
-// ActionCreate wrapper for Actioner.Create
-func ActionCreate(name string, data interface{}) error {
-	return DefaultManager.Action.Create(name, data)
-}
-
-// ActionDelete wrapper for Actioner.Delete
-func ActionDelete(name string) error {
-	return DefaultManager.Action.Delete(name)
-=======
 // Authenticate wrapper for DefaultManager.Authentication.Authenticate.
 func Authenticate(ctx Identity, password string, dst interface{}) error {
 	return DefaultManager.Authentication.Authenticate(ctx, password, dst)
->>>>>>> release/v0.0.2
 }
 
 // Close wrapper for DefaultManager.Authentication.Close.
