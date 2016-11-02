@@ -1,0 +1,22 @@
+hash: 6f675367457471a70074608f39735963cb320ad419d480628c8c30915adcacd6
+updated: 2016-11-02T12:26:44.984352695-06:00
+imports:
+- name: github.com/jimmy-go/pgwp
+  version: 445fa21731d6208357de93b3d03770d5cb8897ab
+- name: github.com/jmoiron/sqlx
+  version: 5f97679e23f75f42b265fec8d3bdb1c8de90b79d
+  subpackages:
+  - reflectx
+- name: github.com/satori/go.uuid
+  version: b061729afc07e77a8aa4fad0a2fd840958f1942a
+- name: golang.org/x/crypto
+  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
+  subpackages:
+  - bcrypt
+  - ssh/terminal
+  - blowfish
+- name: golang.org/x/sys
+  version: c200b10b5d5e122be351b67af224adc6128af5bf
+  subpackages:
+  - unix
+testImports: []
