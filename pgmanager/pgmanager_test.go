@@ -1,5 +1,8 @@
-// Package rawmanager contains a QRA manager only on cache.
-// Was done for most simple example of QRA manager.
+// Package pgmanager contains the Default manager for roles,
+// sessions, user permissions and users itself in SQLite.
+//
+// You can use it as current state or make your own satisfying
+// qra.Manager interface.
 //
 // MIT License
 //
@@ -22,34 +25,13 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package rawmanager
+package pgmanager
 
-import "sync"
+import "testing"
 
-// Account struct
-type Account struct {
-	Data map[string]string
-
-	sync.RWMutex
+func TestConnect(t *testing.T) {
+	err := Connect("sqlite3", "", false)
+	if err != nil {
+		t.Errorf("connect : err [%s]", err)
+	}
 }
-
-// Create func.
-func (a *Account) Create(username string) error {
-	a.RLock()
-	defer a.RUnlock()
-
-	a.Data[username] = username
-	return nil
-}
-
-// Delete func.
-func (a *Account) Delete(username string) error {
-	a.RLock()
-	defer a.RUnlock()
-
-	delete(a.Data, username)
-	return nil
-}
-
-// ImplementsAccounter satisfies Accounter.
-func (a *Account) ImplementsAccounter() {}

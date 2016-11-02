@@ -24,57 +24,59 @@
 // SOFTWARE.
 package rawmanager
 
-import (
-	"log"
-
-	"github.com/jimmy-go/qra"
-)
+import "github.com/jimmy-go/qra"
 
 var (
-	sessions    *Session
-	accounts    *Account
-	roles       *Role
-	permissions *Permission
-	actions     *Action
+	authentication *Authenticationer
+	designation    *Designationer
 )
 
 // Connect starts the manager.
 // In most common cases here you start third party connections
 // as databases, clients, etc.
 func Connect() error {
-	sessions = &Session{
+	authentication = &Authenticationer{
 		Data: make(map[string]string),
-	}
-	accounts = &Account{
-		Data: make(map[string]string),
-	}
-	roles = &Role{
-		Data:       make(map[string]string),
-		Collection: []string{"admin", "user"},
-		// roles by users.
-		Users: map[string][]string{
-			"admin@mail.com": []string{"admin", "user"},
-			"user1@mail.com": []string{"user"},
-			"user2@mail.com": []string{"user", "blank"},
+		// users simulates database user validation.
+		// user:password key set.
+		Users: map[string]string{
+			"admin@mail.com": "admin123",
+			"user1@mail.com": "123456",
+			"user2@mail.com": "abcdef",
 		},
 	}
-	permissions = &Permission{
-		Data: make(map[string]string),
+	designation = &Designationer{
+		// Data contains user and resourceID where he can edit.
+		Data: map[string][]string{
+			// admin can edit himself and user1 and user2.
+			"admin@mail.com": []string{
+				"read:admins",
+				"read:users",
+				"read:admin@mail.com",
+				"write:admin@mail.com",
+				"read:user1@mail.com",
+				"read:user2@mail.com",
+			},
+			// user1 has permissions over himself only.
+			"user1@mail.com": []string{
+				"read:users",
+				"read:user1@mail.com",
+				"write:user1@mail.com",
+			},
+			// user2 has permissions over himself only.
+			"user2@mail.com": []string{
+				"read:users",
+				"read:user2@mail.com",
+				"write:user2@mail.com",
+			},
+		},
+		// Share it permissions.
+		Share: map[string]string{
+			"admin@mail.com": "user2@mail.com",
+		},
 	}
-	actions = &Action{
-		Data: make(map[string]string),
-	}
-	log.Printf("RawManager : sessions [%v]", sessions)
-	log.Printf("RawManager : accounts [%v]", accounts)
-	log.Printf("RawManager : roles [%v]", roles)
-	log.Printf("RawManager : permissions [%v]", permissions)
-	log.Printf("RawManager : actions [%v]", actions)
 
-	// register qra default manager or panics.
-	qra.MustRegisterSessioner(sessions)
-	qra.MustRegisterAccounter(accounts)
-	qra.MustRegisterRoler(roles)
-	qra.MustRegisterPermissioner(permissions)
-	qra.MustRegisterActioner(actions)
+	qra.MustRegisterAuthentication(authentication)
+	qra.MustRegisterDesignation(designation)
 	return nil
 }

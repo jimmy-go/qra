@@ -1,21 +1,5 @@
 // Package qra contains QuickRobutsAdmin interfaces for
-// common tasks building administrator sites.
-//
-// QRA allows you a fast start for admins and API stability
-// over the time.
-/*
-	In order to understand qra interfaces you need to know
-	what these methods means:
-				RESOURCE
-	List: retrieve resource catalog.
-	Create: add a new resource item for catalog.
-	Delete: delete a resource item from catalog.
-				USER
-	UserList: user catalog selection.
-	UserHas: user has item from resource catalog?
-	UserAdd: add resource item to user.
-	UserRemove: remove resource item from user.
-*/
+// RBAC, MAC, DAC, ABAC and ZBAC systems.
 //
 // MIT License
 //
@@ -42,242 +26,122 @@ package qra
 
 import (
 	"errors"
+<<<<<<< HEAD
 	"log"
+=======
+	"io"
+	"time"
+>>>>>>> release/v0.0.2
 )
 
 var (
 	// DefaultManager is the default QRA Manager.
 	DefaultManager = &QRA{}
 
-	// ErrSessionerNil returned when QRA Session is nil.
-	ErrSessionerNil = errors.New("qra: sessioner interface is nil")
+	// ErrAuthenticationNil returned when QRA authentication
+	// interface is nil.
+	ErrAuthenticationNil = errors.New("qra: authentication interface is nil")
 
-	// ErrAccounterNil returned when QRA Account is nil.
-	ErrAccounterNil = errors.New("qra: accounter interface is nil")
-
-	// ErrRolerNil returned when QRA Role is nil.
-	ErrRolerNil = errors.New("qra: roler interface is nil")
-
-	// ErrPermissionerNil returned when QRA Permission is nil.
-	ErrPermissionerNil = errors.New("qra: permissioner interface is nil")
-
-	// ErrActionerNil returned when QRA Action is nil.
-	ErrActionerNil = errors.New("qra: actioner interface is nil")
+	// ErrDesignationNil returned when QRA authorization-designation
+	// interface is nil.
+	ErrDesignationNil = errors.New("qra: authorization-designation interface is nil")
 )
 
 // QRA struct is the container for common administrator
 // operations split between interfaces.
-//
-// Session control: Sessioner-interface.
-// Account management: Accounter-interface.
-// Role management: Roler-interface.
-// Rermissions: Permissioner-interface.
 type QRA struct {
-	Account    Accounter
-	Session    Sessioner
-	Role       Roler
-	Permission Permissioner
-	Action     Actioner
+	Authentication           Authentication
+	DesignationAuthorization Designation
 }
 
 // New returns a new QRA struct.
-func New(a Accounter, s Sessioner, r Roler, p Permissioner, ac Actioner) (*QRA, error) {
+func New(a Authentication, d Designation) (*QRA, error) {
 	q := &QRA{
-		Account:    a,
-		Session:    s,
-		Role:       r,
-		Permission: p,
-		Action:     ac,
+		Authentication:           a,
+		DesignationAuthorization: d,
 	}
 	return q, nil
 }
 
-// Sessioner SESSIONs doEr interface
-type Sessioner interface {
-	// Login method validates username and password.
-	Login(username, password string) error
+// Identity interface for management of identities (users).
+type Identity interface {
+	// Me method returns identity name (username, userID, etc.)
+	Me() string
 
-	// Create method generates a new session for user
-	// returning sessionID.
-	Create(userID string) (sessionID string, err error)
-
-	// Delete method deletes session ID.
-	Delete(sessionID string) error
-
-	// Locate method returns session or error.
-	Locate(sessionID string) (interface{}, error)
-
-	ImplementsSessioner()
+	// Session method returns current session or error.
+	// If session is found then is written to dst.
+	Session(dst interface{}) error
 }
 
-// Accounter ACCOUNT managER interface
-type Accounter interface {
-	// Create method controls user account creation.
-	Create(username string) error
+// Authentication interface for session management of users.
+type Authentication interface {
+	// Authenticate method makes login to user. It will call
+	// Me method to retrieve Identity username, validate
+	// if not session is present with Session method.
+	// Developer implementations of Authentication interface
+	// MUST have session storage methods.
+	Authenticate(ctx Identity, password string, dst interface{}) error
 
-	// Delete method controls user account remove.
-	Delete(username string) error
-
-	ImplementsAccounter()
+	// Close method will delete session of current identity.
+	Close(ctx Identity) error
 }
 
-// Roler ROLE managER interface
-type Roler interface {
-	// List method returns role catalog.
-	List() ([]string, error)
-	// Create method allow create roles on the way.
-	Create(name string, data interface{}) error
-	// Delete method removes role from role catalog making it
-	// unavailable for everyone.
-	Delete(ID string) error
+// Designation interface stands for Authorization-Designation
+// operations.
+type Designation interface {
+	// Search permission-designations and writes to writer.
+	// Recommended format for results is: `permission:resource`.
+	// Return error if not permission for identity was found.
+	// Filter parameter will allow search permissions by
+	// name, resource and has pagination (e.g.: `permission:resource/1-36` or
+	// `permission:resource/since/123abc`).
+	Search(ctx Identity, writer io.Writer, filter string) error
 
-	// UserRoles method return user roles.
-	UserRoles(string) ([]string, error)
-	// UserHas method validates user has role.
-	UserHas(userID, roleID string) bool
-	// UserRoleAdd method adds role ID to user ID.
-	UserRoleAdd(userID, roleID string) error
-	// UserRoleRemove method removes role from user.
-	UserRoleRemove(userID, roleID string) error
+	// Allow method shares identity permission over resource with dst.
+	Allow(ctx Identity, password, permission, resource, dst string, expiresAt time.Time) error
 
-	ImplementsRoler()
+	// Revoke method will revoke a permission that ctx previously
+	// give to dst.
+	Revoke(ctx Identity, password, permission, resource, dst string) error
 }
 
-// Permissioner PERMISSION managER interface.
-type Permissioner interface {
-	// List method returns permissions catalog.
-	List() ([]string, error)
-	// Create method creates a new permission.
-	Create(name string, data interface{}) error
-	// Delete method deletes permission and make
-	// it unavailable for everyone.
-	Delete(permissionID string) error
-
-	// UserPermissions method returns user permissions.
-	UserPermissions(userID string) ([]string, error)
-	// UserHas method validates user has permission.
-	UserHas(userID, permissionID string) bool
-	// UserPermissionAdd method adds permission ID to user ID.
-	UserPermissionAdd(userID, permissionID string) error
-	// UserPermissionRemove method removes permission from
-	// user.
-	UserPermissionRemove(userID, permissionID string) error
-
-	ImplementsPermissioner()
-}
-
-// Actioner ACTIONs managER interface.
-type Actioner interface {
-	// List method returns actions catalog.
-	List() ([]string, error)
-	// Create method creates a new action.
-	Create(name string, data interface{}) error
-	// Delete method deletes permission and make it unavailable
-	// for everyone.
-	Delete(name string) error
-
-	// UserActions method returns user actions.
-	UserActions(userID string) ([]string, error)
-	// UserHas method validates user has action.
-	UserHas(userID, actionID string) bool
-	// UserActionAdd method adds action ID to user ID.
-	UserActionAdd(userID, actionID string) error
-	// UserActionRemove method removes permission from user.
-	UserActionRemove(userID, actionID string) error
-
-	ImplementsActioner()
-}
-
-// RegisterSessioner replaces Sessioner of DefaultManager.
-func RegisterSessioner(s Sessioner) error {
-	if s == nil {
-		return ErrSessionerNil
-	}
-	DefaultManager.Session = s
-	return nil
-}
-
-// MustRegisterSessioner calls RegisterSessioner function or
-// panics.
-func MustRegisterSessioner(s Sessioner) {
-	err := RegisterSessioner(s)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// RegisterAccounter replaces Accounter of DefaultManager.
-func RegisterAccounter(a Accounter) error {
+// RegisterAuthentication replaces Authentication of DefaultManager.
+func RegisterAuthentication(a Authentication) error {
 	if a == nil {
-		return ErrAccounterNil
+		return ErrAuthenticationNil
 	}
-	DefaultManager.Account = a
+	DefaultManager.Authentication = a
 	return nil
 }
 
-// MustRegisterAccounter calls RegisterAccounter function or
+// MustRegisterAuthentication calls RegisterAuthentication function or
 // panics.
-func MustRegisterAccounter(a Accounter) {
-	err := RegisterAccounter(a)
+func MustRegisterAuthentication(a Authentication) {
+	err := RegisterAuthentication(a)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// RegisterRoler replaces Roler of DefaultManager.
-func RegisterRoler(r Roler) error {
-	if r == nil {
-		return ErrRolerNil
+// RegisterDesignation replaces Authentication of DefaultManager.
+func RegisterDesignation(d Designation) error {
+	if d == nil {
+		return ErrDesignationNil
 	}
-	DefaultManager.Role = r
+	DefaultManager.DesignationAuthorization = d
 	return nil
 }
 
-// MustRegisterRoler calls RegisterRoler function or
+// MustRegisterDesignation calls RegisterDesignation function or
 // panics.
-func MustRegisterRoler(r Roler) {
-	err := RegisterRoler(r)
+func MustRegisterDesignation(d Designation) {
+	err := RegisterDesignation(d)
 	if err != nil {
 		panic(err)
 	}
 }
 
-// RegisterPermissioner replaces Permissioner of DefaultManager.
-func RegisterPermissioner(p Permissioner) error {
-	if p == nil {
-		return ErrPermissionerNil
-	}
-	DefaultManager.Permission = p
-	return nil
-}
-
-// MustRegisterPermissioner calls RegisterPermissioner function or
-// panics.
-func MustRegisterPermissioner(p Permissioner) {
-	err := RegisterPermissioner(p)
-	if err != nil {
-		panic(err)
-	}
-}
-
-// RegisterActioner replaces Actioner of DefaultManager.
-func RegisterActioner(ac Actioner) error {
-	if ac == nil {
-		return ErrActionerNil
-	}
-	DefaultManager.Action = ac
-	return nil
-}
-
-// MustRegisterActioner calls RegisterActioner function or
-// panics.
-func MustRegisterActioner(ac Actioner) {
-	err := RegisterActioner(ac)
-	if err != nil {
-		panic(err)
-	}
-}
-
+<<<<<<< HEAD
 // Login wrapper for Sessioner.Login
 func Login(username, password string) error {
 	log.Printf("QRA : Login : user [%s] pass [%s]", username, password)
@@ -397,24 +261,29 @@ func ActionCreate(name string, data interface{}) error {
 // ActionDelete wrapper for Actioner.Delete
 func ActionDelete(name string) error {
 	return DefaultManager.Action.Delete(name)
+=======
+// Authenticate wrapper for DefaultManager.Authentication.Authenticate.
+func Authenticate(ctx Identity, password string, dst interface{}) error {
+	return DefaultManager.Authentication.Authenticate(ctx, password, dst)
+>>>>>>> release/v0.0.2
 }
 
-// UserActions wrapper for Actioner.UserActions
-func UserActions(userID string) ([]string, error) {
-	return DefaultManager.Action.UserActions(userID)
+// Close wrapper for DefaultManager.Authentication.Close.
+func Close(ctx Identity) error {
+	return DefaultManager.Authentication.Close(ctx)
 }
 
-// HasAction wrapper for Actioner.HasAction
-func HasAction(userID, actionID string) bool {
-	return DefaultManager.Action.UserHas(userID, actionID)
+// Search wrapper for DefaultManager.Designation.Search.
+func Search(ctx Identity, writer io.Writer, filter string) error {
+	return DefaultManager.DesignationAuthorization.Search(ctx, writer, filter)
 }
 
-// UserActionAdd wrapper for Actioner.UserActionAdd
-func UserActionAdd(userID, actionID string) error {
-	return DefaultManager.Action.UserActionAdd(userID, actionID)
+// Allow wrapper for DefaultManager.Designation.Allow.
+func Allow(ctx Identity, password, permission, resource, dst string, expiresAt time.Time) error {
+	return DefaultManager.DesignationAuthorization.Allow(ctx, password, permission, resource, dst, expiresAt)
 }
 
-// UserActionRemove wrapper for Actioner.UserActionRemove
-func UserActionRemove(userID, actionID string) error {
-	return DefaultManager.Action.UserActionRemove(userID, actionID)
+// Revoke wrapper for DefaultManager.Designation.Revoke.
+func Revoke(ctx Identity, password, permission, resource, dst string) error {
+	return DefaultManager.DesignationAuthorization.Revoke(ctx, password, permission, resource, dst)
 }
