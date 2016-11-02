@@ -1,5 +1,8 @@
-// Package rawmanager contains a QRA manager only on cache.
-// Was done for most simple example of QRA manager.
+// Package pgmanager contains the Default manager for roles,
+// sessions, user permissions and users itself in SQLite.
+//
+// You can use it as current state or make your own satisfying
+// qra.Manager interface.
 //
 // MIT License
 //
@@ -22,47 +25,13 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
-package rawmanager
+package pgmanager
 
-// Permission struct
-type Permission struct {
-	Data map[string]string
+import "testing"
+
+func TestConnect(t *testing.T) {
+	err := Connect("sqlite3", "", false)
+	if err != nil {
+		t.Errorf("connect : err [%s]", err)
+	}
 }
-
-// List func.
-func (p *Permission) List() ([]string, error) {
-	return []string{}, nil
-}
-
-// Create func.
-func (p *Permission) Create(name string, data interface{}) error {
-	return nil
-}
-
-// Delete func.
-func (p *Permission) Delete(ID string) error {
-	return nil
-}
-
-// UserPermissions func.
-func (p *Permission) UserPermissions(userID string) ([]string, error) {
-	return []string{}, nil
-}
-
-// UserHas func.
-func (p *Permission) UserHas(userID, permissionID string) bool {
-	return true
-}
-
-// UserPermissionAdd func.
-func (p *Permission) UserPermissionAdd(userID, permissionID string) error {
-	return nil
-}
-
-// UserPermissionRemove func.
-func (p *Permission) UserPermissionRemove(userID, permissionID string) error {
-	return nil
-}
-
-// ImplementsPermissioner satisfies Permissioner.
-func (p *Permission) ImplementsPermissioner() {}

@@ -24,32 +24,59 @@
 // SOFTWARE.
 package rawmanager
 
-import "sync"
+import (
+	"errors"
+	"log"
+	"sync"
 
-// Account struct
-type Account struct {
-	Data map[string]string
+	"github.com/jimmy-go/qra"
+	"github.com/satori/go.uuid"
+)
+
+var (
+	errInvalidCredentials = errors.New("raw session: invalid username or password")
+)
+
+// Authenticationer struct
+type Authenticationer struct {
+	Data  map[string]string
+	Users map[string]string
 
 	sync.RWMutex
 }
 
-// Create func.
-func (a *Account) Create(username string) error {
-	a.RLock()
-	defer a.RUnlock()
+// Authenticate makes login for Identity.
+func (s *Authenticationer) Authenticate(ctx qra.Identity, password string, dst interface{}) error {
+	s.RLock()
+	defer s.RUnlock()
 
-	a.Data[username] = username
+	userID := ctx.Me()
+	log.Printf("Authenticate : userID [%s]", userID)
+
+	pass, ok := s.Users[userID]
+	if !ok || pass != password {
+		return errInvalidCredentials
+	}
+
+	s.Data[userID] = uuid.NewV4().String()
 	return nil
 }
 
-// Delete func.
-func (a *Account) Delete(username string) error {
-	a.RLock()
-	defer a.RUnlock()
+// Close deletes current session of Identity.
+func (s *Authenticationer) Close(ctx qra.Identity) error {
+	s.RLock()
+	defer s.RUnlock()
 
-	delete(a.Data, username)
+	userID := ctx.Me()
+	log.Printf("Close : userID [%s]", userID)
+
+	var sessionID string
+	err := ctx.Session(&sessionID)
+	if err != nil {
+		log.Printf("Close : get session : err [%s]", err)
+		return err
+	}
+
+	delete(s.Data, sessionID)
 	return nil
 }
-
-// ImplementsAccounter satisfies Accounter.
-func (a *Account) ImplementsAccounter() {}
