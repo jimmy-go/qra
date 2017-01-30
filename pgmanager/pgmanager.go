@@ -113,6 +113,9 @@ func connectAndRegister(driver, connectURL string) error {
 
 	qra.MustRegisterAuthentication(authentication)
 	qra.MustRegisterDesignation(designation)
+	if err := systemCheck(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -128,7 +131,10 @@ func systemCheck() error {
 		log.Printf("SYSTEM IDENTITY NOT FOUND: creating system")
 
 		// generate random password for "system".
-		randpass := MakePassword(64)
+		randpass, err := MakePassword(64)
+		if err != nil {
+			return err
+		}
 
 		if _, err := makeUser(System, randpass); err != nil {
 			log.Printf("can't  create system identity : err [%s]", err)

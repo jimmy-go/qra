@@ -39,7 +39,6 @@ import (
 	"io"
 	"log"
 	"math/big"
-	"math/rand"
 	"net"
 	"strings"
 	"time"
@@ -313,11 +312,16 @@ func makeUser(username, password string) (string, error) {
 }
 
 // MakePassword generates a random password of l length.
-func MakePassword(l int) string {
-	rand.Seed(time.Now().UnixNano())
+func MakePassword(l int) (string, error) {
+	if l < 10 {
+		return "", errors.New("password lenght must be greater than 10 chars")
+	}
 	bb := make([]byte, l)
-	rand.Read(bb)
+	_, err := cryptorand.Read(bb)
+	if err != nil {
+		return "", err
+	}
 	b := make([]byte, ascii85.MaxEncodedLen(len(bb)))
 	ascii85.Encode(b, bb)
-	return string(b)[:l]
+	return string(b)[:l], nil
 }
