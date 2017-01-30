@@ -1,6 +1,6 @@
 package: github.com/jimmy-go/qra
 import:
-- package: github.com/jimmy-go/pgwp
+- package: github.com/jmoiron/sqlx
 - package: github.com/satori/go.uuid
 - package: golang.org/x/crypto
   subpackages:
