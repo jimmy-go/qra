@@ -36,12 +36,10 @@ func (r *RR) Close(ctx Identity) error {
 	return nil
 }
 
-// TODO;
 func TestNew(t *testing.T) {
 	auth := &RR{}
 	err := RegisterAuthentication(auth)
 	if err != nil {
 		t.Logf("err [%s]", err)
-		t.Fail()
 	}
 }

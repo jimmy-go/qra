@@ -76,8 +76,8 @@ type Identity interface {
 	// Me method returns identity name (username, userID, etc.)
 	Me() string
 
-	// Session method returns current session or error.
-	// If session is found then is written to dst.
+	// Session method binds the current session. If identity has no session error
+	// is returned
 	Session(dst interface{}) error
 }
 
@@ -86,8 +86,6 @@ type Authentication interface {
 	// Authenticate method makes login to user. It will call
 	// Me method to retrieve Identity username, validate
 	// if not session is present with Session method.
-	// Developer implementations of Authentication interface
-	// MUST have session storage methods.
 	Authenticate(ctx Identity, password string, dst interface{}) error
 
 	// Close method will delete session of current identity.
