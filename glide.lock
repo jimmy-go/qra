@@ -1,14 +1,18 @@
 hash: 3aa7b6960d0811db4bc80745aaafee6daf5d3bc88b3879a8c0e0b7e47e1270ea
-updated: 2017-01-30T01:26:48.503008177-06:00
+updated: 2017-01-30T12:50:15.30499596-06:00
 imports:
 - name: github.com/jmoiron/sqlx
   version: f980a91bdc37abef88269b8f122d7de6352102f5
   subpackages:
   - reflectx
+- name: github.com/lib/pq
+  version: 67c3f2a8884c9b1aac5503c8d42ae4f73a93511c
+  subpackages:
+  - oid
 - name: github.com/satori/go.uuid
   version: b061729afc07e77a8aa4fad0a2fd840958f1942a
 - name: golang.org/x/crypto
-  version: 854ae91cdcbf914b499b1d7641d07859f3653481
+  version: dc137beb6cce2043eb6b5f223ab8bf51c32459f4
   subpackages:
   - bcrypt
   - ssh/terminal
