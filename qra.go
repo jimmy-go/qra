@@ -1,5 +1,5 @@
-// Package qra contains QuickRobutsAdmin interfaces for
-// RBAC, MAC, DAC, ABAC and ZBAC systems.
+// Package qra contains QuickRobutsAdmin interfaces for RBAC, MAC, DAC, ABAC
+// and ZBAC systems.
 //
 // MIT License
 //
@@ -26,13 +26,12 @@ package qra
 
 import (
 	"errors"
-	"io"
 	"time"
 )
 
 var (
 	// DefaultManager is the default QRA Manager.
-	DefaultManager = &QRA{}
+	DefaultManager = defaultQRA()
 
 	// ErrAuthenticationNil returned when QRA authentication
 	// interface is nil.
@@ -41,7 +40,20 @@ var (
 	// ErrDesignationNil returned when QRA authorization-designation
 	// interface is nil.
 	ErrDesignationNil = errors.New("qra: authorization-designation interface is nil")
+
+	ErrSystemNotFound       = errors.New("system identity not found")
+	ErrInvalidCredentials   = errors.New("invalid username or password")
+	ErrResourceNotSpecified = errors.New("resource not specified")
+	ErrPasswordSize         = errors.New("invalid password size")
+	// ErrOwnSign error returned when an identity try to auto sign a permission.
+	ErrOwnSign = errors.New("can't allow own permission")
+	// ErrIdentityNotFound error returned when identity not exists in database.
+	ErrIdentityNotFound = errors.New("identity not found")
 )
+
+func defaultQRA() *QRA {
+	return &QRA{}
+}
 
 // QRA struct is the container for common administrator
 // operations split between interfaces.
@@ -50,7 +62,7 @@ type QRA struct {
 	DesignationAuthorization Designation
 }
 
-// New returns a new QRA struct.
+// New returns a new QRA manager.
 func New(a Authentication, d Designation) (*QRA, error) {
 	q := &QRA{
 		Authentication:           a,
@@ -64,8 +76,8 @@ type Identity interface {
 	// Me method returns identity name (username, userID, etc.)
 	Me() string
 
-	// Session method returns current session or error.
-	// If session is found then is written to dst.
+	// Session method binds the current session. If identity has no session error
+	// is returned
 	Session(dst interface{}) error
 }
 
@@ -74,8 +86,6 @@ type Authentication interface {
 	// Authenticate method makes login to user. It will call
 	// Me method to retrieve Identity username, validate
 	// if not session is present with Session method.
-	// Developer implementations of Authentication interface
-	// MUST have session storage methods.
 	Authenticate(ctx Identity, password string, dst interface{}) error
 
 	// Close method will delete session of current identity.
@@ -85,13 +95,12 @@ type Authentication interface {
 // Designation interface stands for Authorization-Designation
 // operations.
 type Designation interface {
-	// Search permission-designations and writes to writer.
-	// Recommended format for results is: `permission:resource`.
+	// Search permission-designations and binds table designation content to v.
 	// Return error if not permission for identity was found.
 	// Filter parameter will allow search permissions by
 	// name, resource and has pagination (e.g.: `permission:resource/1-36` or
 	// `permission:resource/since/123abc`).
-	Search(ctx Identity, writer io.Writer, filter string) error
+	Search(ctx Identity, v interface{}, filter string) error
 
 	// Allow method shares identity permission over resource with dst.
 	Allow(ctx Identity, password, permission, resource, dst string, expiresAt time.Time) error
@@ -148,8 +157,8 @@ func Close(ctx Identity) error {
 }
 
 // Search wrapper for DefaultManager.Designation.Search.
-func Search(ctx Identity, writer io.Writer, filter string) error {
-	return DefaultManager.DesignationAuthorization.Search(ctx, writer, filter)
+func Search(ctx Identity, v interface{}, filter string) error {
+	return DefaultManager.DesignationAuthorization.Search(ctx, v, filter)
 }
 
 // Allow wrapper for DefaultManager.Designation.Allow.

@@ -56,26 +56,25 @@ type Authentication interface {
 // Designation interface stands for Authorization-Designation
 // operations.
 type Designation interface {
-	// Search permission-designations and writes results to writer.
-	// Recommended format for results is: `permission:resource`.
-	// Return error if not permissions for identity was found.
-	// Filter parameter would allow search permissions by
+	// Search permission-designations and binds table designation content to v.
+	// Return error if not permission for identity was found.
+	// Filter parameter will allow search permissions by
 	// name, resource and has pagination (e.g.: `permission:resource/1-36` or
 	// `permission:resource/since/123abc`).
-	Search(ctx Identity, writer io.Writer, filter string) error
+	Search(ctx Identity, v interface{}, filter string) error
 
-	// Allow method shares identity permission over resource with dst identity.
-	Allow(ctx Identity, permission, resource, dst string, expiresAt time.Time) error
+	// Allow method shares identity permission over resource with dst.
+	Allow(ctx Identity, password, permission, resource, dst string, expiresAt time.Time) error
 
 	// Revoke method will revoke a permission that ctx previously
 	// give to dst.
-	Revoke(ctx Identity, permission, dst string) error
+	Revoke(ctx Identity, password, permission, resource, dst string) error
 }
 ```
 
 #####Usage:
 
-QRA has a default manager, you can add doers with:
+QRA needs a default manager that you must register at init time.
 ```
 qra.MustRegisterAuthentication(yourAuthentication)
 qra.MustRegisterDesignation(yourDesignationAuthorization)
@@ -86,12 +85,11 @@ Inside your project call some qra function.
 func MyLoginHandler(w http.Response, r *http.Request) {
 
     username := r.Form.Get("username")
-    ctx := &SomeContext{User: username} // type must satisfy qra.Identity interface
+    ctx := &SomeContext{User: username} // must satisfy qra.Identity interface
+
     password := r.Form.Get("password")
 
     var token string
-
-    // this will call DefaultManager.Authentication.Authenticate(ctx, password, dst)
     err := qra.Authenticate(ctx, password, &token) error {
     // check errors...
 }
