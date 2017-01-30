@@ -1,9 +1,20 @@
 -- contains identity, session, designation, trail
 /*
-    PostgreSQL default migration for QRA manager.
+    QRA Manager PostgreSQL database.
+    see: https://github.com/jimmy-go/qra
 */
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+DROP TYPE IF EXISTS STATUS;
+CREATE TYPE STATUS AS ENUM('active','inactive');
+
+DROP TYPE IF EXISTS PERM;
+CREATE TYPE PERM AS ENUM(
+'session-on','identity-create','identity-edit','identity-delete','read','write',
+'delete'
+);
+
 
 CREATE OR REPLACE FUNCTION update_modified_column()
 RETURNS trigger AS
@@ -24,8 +35,8 @@ CREATE TABLE identity (
     password bytea,
     private_key bytea,
     public_key bytea,
-    created_at timestamp DEFAULT now(),
-    updated_at timestamp DEFAULT now(),
+    created_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
+    updated_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
     CONSTRAINT identity_pkey PRIMARY KEY (id)
 )
 WITH (
@@ -44,47 +55,40 @@ CREATE TABLE session (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
     identity_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
     token text,
-    active bool,
-    expires_at timestamp,
-    created_at timestamp DEFAULT now(),
+    status STATUS DEFAULT 'inactive',
+    expires_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
+    created_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
     CONSTRAINT session_pkey PRIMARY KEY (id)
 )
 WITH (
     OIDS=FALSE
 );
 
-DROP TYPE IF EXISTS PERM;
-
--- permission catalog.
--- TODO; add more common permissions
-CREATE TYPE PERM AS ENUM(
-'session-on','identity-create','identity-edit','identity-delete','read','write',
-'delete'
-);
-
 CREATE TABLE designation (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
     issuer_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
     issuer_signature bytea,
-    identity text,
+    identity_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
     permission PERM,
     resource text,
-    expires_at timestamp,
-    created_at timestamp DEFAULT now(),
+    expires_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
+    created_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
     CONSTRAINT designation_pkey PRIMARY KEY (id)
 )
 WITH (
     OIDS=FALSE
 );
 
+-- TODO; make fast index for query at the same time issuer_id,issuer_signature,
+-- identity_id, permission and resource
 CREATE INDEX designation_issuer_signature_idx ON designation (issuer_signature);
-CREATE INDEX designation_permission_idx ON designation (permission);
-CREATE INDEX designation_resource_idx ON designation (resource);
+--CREATE INDEX designation_permission_idx ON designation (permission);
+--CREATE INDEX designation_resource_idx ON designation (resource);
 
 CREATE TABLE trail (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
     designation_id uuid REFERENCES designation (id) ON DELETE RESTRICT,
-    created_at timestamp DEFAULT now(),
+    created_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
     CONSTRAINT trail_pkey PRIMARY KEY (id)
 )
 WITH (
