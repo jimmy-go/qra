@@ -62,7 +62,7 @@ type QRA struct {
 	DesignationAuthorization Designation
 }
 
-// New returns a new QRA struct.
+// New returns a new QRA manager.
 func New(a Authentication, d Designation) (*QRA, error) {
 	q := &QRA{
 		Authentication:           a,
