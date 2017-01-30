@@ -277,7 +277,7 @@ func (p *Designationer) Search(ctx qra.Identity, v interface{}, filter string) e
 		return err
 	}
 
-	log.Printf("Search : me [%s] me id [%s] filter [%#v]", me, meID, fr)
+	// log.Printf("Search : me [%s] me id [%s] filter [%v]", me, meID, fr)
 
 	if v == nil {
 		var c int
@@ -286,7 +286,6 @@ func (p *Designationer) Search(ctx qra.Identity, v interface{}, filter string) e
 			FROM designation
 			WHERE identity_id=$1 AND permission=$2 AND resource=$3;
 		`, meID, fr.Permission, fr.Resource)
-		log.Printf("Search : find designation : c [%d]", c)
 		if err != nil {
 			log.Printf("Search : find designation : err [%s]", err)
 			return err
