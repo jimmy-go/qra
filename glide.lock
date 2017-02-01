@@ -1,12 +1,18 @@
-hash: 3aa7b6960d0811db4bc80745aaafee6daf5d3bc88b3879a8c0e0b7e47e1270ea
-updated: 2017-01-30T12:50:15.30499596-06:00
+hash: 1357b4264e2dc4e82704bccb9466e5e26bcb6b0c2316667cdcdc3127b9cf698a
+updated: 2017-01-31T20:08:12.50958101-06:00
 imports:
+- name: github.com/gorilla/context
+  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
+- name: github.com/gorilla/securecookie
+  version: fa5329f913702981df43dcb2a380bac429c810b5
+- name: github.com/gorilla/sessions
+  version: 83c8db3bdc9be789e57e3756ffbcffd2d7d40176
 - name: github.com/jmoiron/sqlx
   version: f980a91bdc37abef88269b8f122d7de6352102f5
   subpackages:
   - reflectx
 - name: github.com/lib/pq
-  version: 67c3f2a8884c9b1aac5503c8d42ae4f73a93511c
+  version: a6657b2386e9b8be76484c08711b02c7cf867ead
   subpackages:
   - oid
 - name: github.com/satori/go.uuid
