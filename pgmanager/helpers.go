@@ -52,7 +52,7 @@ import (
 func meID(me string) (string, error) {
 	var s string
 	err := Db.Get(&s, `
-		SELECT id FROM identity WHERE name=$1;
+		SELECT id FROM qra_identity WHERE name=$1;
 	`, me)
 	if err != nil {
 		return "", err
@@ -67,7 +67,7 @@ func meHimID(me, him string) (string, string, error) {
 		Name string `db:"name"`
 	}
 	err := Db.Select(&us, `
-		SELECT id,name FROM identity WHERE name=$1 OR name=$2;
+		SELECT id,name FROM qra_identity WHERE name=$1 OR name=$2;
 	`, me, him)
 	if err != nil {
 		return "", "", err
@@ -299,7 +299,7 @@ func makeUser(username, password string) (string, error) {
 
 	var s string
 	err = Db.Get(&s, `
-		INSERT INTO identity
+		INSERT INTO qra_identity
 		(name,password,private_key,public_key)
 		VALUES($1,$2,$3,$4)
 		RETURNING id;

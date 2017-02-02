@@ -34,6 +34,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -54,11 +55,16 @@ func Connect(driver, connectURL string) error {
 }
 
 var (
-	authentication *Authenticationer
-	designation    *Designationer
+	a *Authenticationer
+	d *Designationer
 
 	// Db database for this manager.
 	Db *sqlx.DB
+
+	// I info log.
+	I = log.New(os.Stdout, "[I] ", log.Lshortfile|log.Ltime|log.Ldate|log.Lmicroseconds)
+	// E error log.
+	E = log.New(os.Stderr, "[E] ", log.Lshortfile|log.Ltime|log.Ldate|log.Lmicroseconds)
 )
 
 const (
@@ -108,11 +114,11 @@ func connectAndRegister(driver, connectURL string) error {
 	if err != nil {
 		return err
 	}
-	authentication = &Authenticationer{}
-	designation = &Designationer{}
+	a = &Authenticationer{}
+	d = &Designationer{}
 
-	qra.MustRegisterAuthentication(authentication)
-	qra.MustRegisterDesignation(designation)
+	qra.MustRegisterAuthentication(a)
+	qra.MustRegisterDesignation(d)
 	if err := systemCheck(); err != nil {
 		return err
 	}
@@ -125,10 +131,12 @@ func connectAndRegister(driver, connectURL string) error {
 func systemCheck() error {
 	var systemID string
 	err := Db.Get(&systemID, `
-		SELECT id FROM identity WHERE name=$1;
+		SELECT id FROM qra_identity WHERE name=$1;
 	`, System)
 	if err != nil {
-		log.Printf("SYSTEM IDENTITY NOT FOUND: creating system")
+		E.Printf("locate system identity : err [%s]", err)
+
+		I.Printf("SYSTEM IDENTITY NOT FOUND: creating system")
 
 		// generate random password for "system".
 		randpass, err := MakePassword(64)
@@ -137,7 +145,7 @@ func systemCheck() error {
 		}
 
 		if _, err := makeUser(System, randpass); err != nil {
-			log.Printf("can't  create system identity : err [%s]", err)
+			E.Printf("can't  create system identity : err [%s]", err)
 			return qra.ErrSystemNotFound
 		}
 
@@ -147,32 +155,32 @@ func systemCheck() error {
 
 		// generate session
 
-		err = authentication.Authenticate(ctx, randpass, &ctx.Token)
+		err = a.Authenticate(ctx, randpass, &ctx.Token)
 		if err != nil {
-			log.Printf("can't  create system identity : authenticate : err [%s]", err)
+			E.Printf("can't  create system identity : authenticate : err [%s]", err)
 			return qra.ErrSystemNotFound
 		}
 
 		// allow terminal session for identity "system"
 
 		expiresAt := time.Now().UTC().Add(PermissionDuration)
-		err = designation.Allow(ctx, randpass, PermSessionOn, "terminal", System, expiresAt)
+		err = d.Allow(ctx, randpass, PermSessionOn, "terminal", System, expiresAt)
 		if err != nil {
-			log.Printf("can't  create system identity : err [%s]", err)
+			E.Printf("can't  create system identity : err [%s]", err)
 			return qra.ErrSystemNotFound
 		}
 
 		// allow create identity for user "system"
 
-		err = designation.Allow(ctx, randpass, PermIdentityCreate, "*", System, expiresAt)
+		err = d.Allow(ctx, randpass, PermIdentityCreate, "*", System, expiresAt)
 		if err != nil {
-			log.Printf("can't  create system identity : err [%s]", err)
+			E.Printf("can't  create system identity : err [%s]", err)
 			return qra.ErrSystemNotFound
 		}
 
 		// show once system password
 
-		log.Printf("SYSTEM IDENTITY PASSWORD: %s", randpass)
+		I.Printf("SYSTEM IDENTITY PASSWORD: %s", randpass)
 	}
 
 	return nil
@@ -184,11 +192,10 @@ type Authenticationer struct{}
 // Authenticate makes login for Identity.
 func (s *Authenticationer) Authenticate(ctx qra.Identity, password string, dst interface{}) error {
 	me := ctx.Me()
-	log.Printf("Authenticate : username [%s] password [%s]", me, password)
 
 	var u IdentitySimple
 	err := Db.Get(&u, `
-		SELECT id,password FROM identity WHERE name=$1;
+		SELECT id,password FROM qra_identity WHERE name=$1;
 	`, me)
 	if err != nil {
 		return err
@@ -207,7 +214,7 @@ func (s *Authenticationer) Authenticate(ctx qra.Identity, password string, dst i
 	token := uuid.NewV4().String() + "." + uuid.NewV4().String()
 
 	err = Db.Get(dst, `
-		INSERT INTO session (identity_id,token,expires_at,status)
+		INSERT INTO qra_session (identity_id,token,expires_at,status)
 		VALUES ($1,$2,$3,$4)
 		RETURNING token;
 	`, u.ID, token, expiresAt, StatusActive)
@@ -224,21 +231,21 @@ func (s *Authenticationer) Close(ctx qra.Identity) error {
 	var sessionID string
 	err := ctx.Session(&sessionID)
 	if err != nil {
-		log.Printf("Close : get session : err [%s]", err)
+		E.Printf("Close : get session : err [%s]", err)
 		return err
 	}
-	log.Printf("Close : username [%s] session id [%s]", me, sessionID)
+	I.Printf("Close : username [%s] session id [%s]", me, sessionID)
 
 	var res string
 	err = Db.Get(&res, `
-		UPDATE session SET status=$2 WHERE token=$1 RETURNING id;
+		UPDATE qra_session SET status=$2 WHERE token=$1 RETURNING id;
 	`, sessionID, StatusInactive)
 	if err != nil {
-		log.Printf("Close : remove session : err [%s]", err)
+		E.Printf("Close : remove session : err [%s]", err)
 		return err
 	}
 
-	log.Printf("Close : res [%s]", res)
+	I.Printf("Close : res [%s]", res)
 
 	return nil
 }
@@ -277,17 +284,17 @@ func (p *Designationer) Search(ctx qra.Identity, v interface{}, filter string) e
 		return err
 	}
 
-	// log.Printf("Search : me [%s] me id [%s] filter [%v]", me, meID, fr)
+	// I.Printf("Search : me [%s] me id [%s] filter [%v]", me, meID, fr)
 
 	if v == nil {
 		var c int
 		err := Db.Get(&c, `
 			SELECT count(id)
-			FROM designation
+			FROM qra_designation
 			WHERE identity_id=$1 AND permission=$2 AND resource=$3;
 		`, meID, fr.Permission, fr.Resource)
 		if err != nil {
-			log.Printf("Search : find designation : err [%s]", err)
+			E.Printf("Search : find designation : err [%s]", err)
 			return err
 		}
 		if c < 1 {
@@ -299,11 +306,11 @@ func (p *Designationer) Search(ctx qra.Identity, v interface{}, filter string) e
 	err = Db.Get(v, `
 		SELECT
 			permission,resource,issuer_signature
-		FROM designation
+		FROM qra_designation
 		WHERE identity_id=$1 AND permission=$2 AND resource=$3;
 	`, meID, fr.Permission, fr.Resource)
 	if err != nil {
-		log.Printf("Search : find designation : err [%s]", err)
+		E.Printf("Search : find designation : err [%s]", err)
 		return err
 	}
 
@@ -352,7 +359,7 @@ type NPE struct {
 // Allow method share permission from ctx to dst identity.
 func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, dst string, expires time.Time) error {
 	me := ctx.Me()
-	log.Printf("Allow : identity [%v] permission [%s] resource [%s] dst_identity [%s]",
+	I.Printf("Allow : identity [%v] permission [%s] resource [%s] dst_identity [%s]",
 		me, permission, resource, dst)
 
 	// validate who is trying to sign the permission.
@@ -371,19 +378,19 @@ func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, 
 
 	var sessionID string
 	err = Db.Get(&sessionID, `
-		SELECT token FROM session WHERE token=$1;
+		SELECT token FROM qra_session WHERE token=$1;
 	`, token)
 	if err != nil {
-		log.Printf("Allow : locate session : err [%s]", err)
+		E.Printf("Allow : locate session : err [%s]", err)
 		return err
 	}
 
 	var dstID string
 	err = Db.Get(&dstID, `
-		SELECT id FROM identity WHERE name=$1;
+		SELECT id FROM qra_identity WHERE name=$1;
 	`, dst)
 	if err != nil {
-		log.Printf("Allow : locate dst id : err [%s]", err)
+		E.Printf("Allow : locate dst id : err [%s]", err)
 		return err
 	}
 
@@ -391,11 +398,11 @@ func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, 
 	err = Db.Get(&npe, `
 		SELECT
 			id,name,password,private_key,public_key
-		FROM identity
+		FROM qra_identity
 		WHERE name=$1;
 	`, me)
 	if err != nil {
-		log.Printf("Allow : locate identity : err [%s]", err)
+		E.Printf("Allow : locate identity : err [%s]", err)
 		return err
 	}
 
@@ -419,7 +426,7 @@ func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, 
 	slug := fmt.Sprintf("%v:%v:%v:%v:%v", me, permission, resource, dst, expires.Format(time.RFC3339))
 	data := []byte(slug)
 
-	// log.Printf("data [%s]", string(data))
+	// I.Printf("data [%s]", string(data))
 
 	signature, err := generateSignature(privKey, data)
 	if err != nil {
@@ -427,22 +434,22 @@ func (p *Designationer) Allow(ctx qra.Identity, password, permission, resource, 
 	}
 	privKey = nil
 	data = nil
-	// log.Printf("sign [%x]", signature)
+	// I.Printf("sign [%x]", signature)
 
 	var res string
 	err = Db.Get(&res, `
-		INSERT INTO designation
+		INSERT INTO qra_designation
 		(issuer_id,issuer_signature,identity_id,permission,resource,expires_at)
 		VALUES ($1,$2,$3,$4,$5,$6)
 		RETURNING id;
 	`, npe.ID, signature, dstID, permission, resource, expires)
 	if err != nil {
-		log.Printf("Allow : store designation : err [%s]", err)
+		E.Printf("Allow : store designation : err [%s]", err)
 		return err
 	}
 	signature = nil
 
-	// log.Printf("designation id [%s]", res)
+	// I.Printf("designation id [%s]", res)
 
 	return nil
 }
@@ -458,7 +465,7 @@ type IdentityRevoke struct {
 // Every revoke operation verifies signed x509 encryption.
 func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource, dst string) error {
 	me := ctx.Me()
-	log.Printf("Revoke : username [%v]", me)
+	I.Printf("Revoke : username [%v]", me)
 
 	// identity has session.
 
@@ -470,10 +477,10 @@ func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource,
 
 	var issuerID string
 	err = Db.Get(&issuerID, `
-		SELECT identity_id FROM session WHERE token=$1;
+		SELECT identity_id FROM qra_session WHERE token=$1;
 	`, token)
 	if err != nil {
-		log.Printf("Revoke : locate session : err [%s]", err)
+		E.Printf("Revoke : locate session : err [%s]", err)
 		return qra.ErrIdentityNotFound
 	}
 
@@ -481,16 +488,16 @@ func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource,
 
 	var passhash []byte
 	err = Db.Get(&passhash, `
-		SELECT password FROM identity WHERE name=$1;
+		SELECT password FROM qra_identity WHERE name=$1;
 	`, me)
 	if err != nil {
-		log.Printf("Revoke : locate identity : err [%s]", err)
+		E.Printf("Revoke : locate identity : err [%s]", err)
 		return err
 	}
 
 	err = bcrypt.CompareHashAndPassword(passhash, []byte(password))
 	if err != nil {
-		log.Printf("Revoke : invalid credentials : err [%s]", err)
+		E.Printf("Revoke : invalid credentials : err [%s]", err)
 		return qra.ErrInvalidCredentials
 	}
 
@@ -503,12 +510,12 @@ func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource,
 
 	var des IdentityRevoke
 	err = Db.Get(&des, `
-		SELECT id,issuer_signature FROM designation
+		SELECT id,issuer_signature FROM qra_designation
 		WHERE issuer_id=$1 AND identity_id=$2 AND
 		permission=$3 AND resource=$4;
 	`, issuerID, dstID, permission, resource)
 	if err != nil {
-		log.Printf("Revoke : locate designation : err [%s] issuer id [%s] dst [%s] permission [%s] resource [%s]",
+		E.Printf("Revoke : locate designation : err [%s] issuer id [%s] dst [%s] permission [%s] resource [%s]",
 			err, issuerID, dstID, permission, resource)
 		return err
 	}
@@ -517,10 +524,10 @@ func (p *Designationer) Revoke(ctx qra.Identity, password, permission, resource,
 
 	var res string
 	err = Db.Get(&res, `
-		DELETE FROM designation WHERE id=$1 RETURNING 'OK';
+		DELETE FROM qra_designation WHERE id=$1 RETURNING 'OK';
 	`, des.ID)
 	if err != nil {
-		log.Printf("Revoke : delete designation : err [%s]", err)
+		E.Printf("Revoke : delete designation : err [%s]", err)
 		return err
 	}
 

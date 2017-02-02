@@ -24,6 +24,8 @@
 package qsess
 
 import (
+	cryptorand "crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
@@ -38,8 +40,9 @@ import (
 var (
 	cstore *sessions.CookieStore
 
-	// sessName custom session name
-	sessName = DefaultSessionName
+	// sessName by default when a session name is not given every time qsess starts
+	// will generate a new session name.
+	sessName = defaultSessionName()
 
 	loginURL = "/login"
 
@@ -49,10 +52,15 @@ var (
 	ErrKeys = errors.New("keys not set")
 )
 
-const (
-	// DefaultSessionName name.
-	DefaultSessionName = "rSZ6m9PTHUAK0njapwumqaJIgi5zt7"
-)
+func defaultSessionName() string {
+	bb := make([]byte, 40)
+	_, err := cryptorand.Read(bb)
+	if err != nil {
+		panic(err)
+	}
+	s := base64.URLEncoding.EncodeToString(bb)
+	return s[:len(s)-4]
+}
 
 // Options struct.
 type Options struct {
@@ -64,7 +72,6 @@ type Options struct {
 
 // Configure inits the cookie store.
 func Configure(o *Options) error {
-	// log.Printf("Configure : o [%#v]", o)
 	if o == nil {
 		return errors.New("options not set")
 	}
@@ -269,6 +276,7 @@ func cookToken(r *http.Request, w http.ResponseWriter) (string, error) {
 	return token, nil
 }
 
+// CookUser returns username stored in gorilla cookie.
 func CookUser(r *http.Request, w http.ResponseWriter) (string, error) {
 	sess, err := cstore.Get(r, sessName)
 	if err != nil {

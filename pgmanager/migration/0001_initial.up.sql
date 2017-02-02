@@ -1,4 +1,4 @@
--- contains identity, session, designation, trail
+-- contains qra_identity, qra_session, qra_designation, qra_trail
 /*
     QRA Manager PostgreSQL database.
     see: https://github.com/jimmy-go/qra
@@ -29,7 +29,7 @@ COST 100;
 ALTER FUNCTION update_modified_column()
 OWNER TO postgres;
 
-CREATE TABLE identity (
+CREATE TABLE qra_identity (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
     name text,
     password bytea,
@@ -37,23 +37,23 @@ CREATE TABLE identity (
     public_key bytea,
     created_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
     updated_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
-    CONSTRAINT identity_pkey PRIMARY KEY (id)
+    CONSTRAINT qra_identity_pkey PRIMARY KEY (id)
 )
 WITH (
     OIDS=FALSE
 );
 
-CREATE UNIQUE INDEX identity_name_idx ON identity (name);
+CREATE UNIQUE INDEX qra_identity_name_idx ON qra_identity (name);
 
-CREATE TRIGGER update_identity_updated_at
+CREATE TRIGGER update_qra_identity_updated_at
 BEFORE UPDATE
-ON identity
+ON qra_identity
 FOR EACH ROW
     EXECUTE PROCEDURE update_modified_column();
 
-CREATE TABLE session (
+CREATE TABLE qra_session (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
-    identity_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
+    identity_id uuid REFERENCES qra_identity (id) ON DELETE RESTRICT,
     token text,
     status STATUS DEFAULT 'inactive',
     expires_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
@@ -64,11 +64,11 @@ WITH (
     OIDS=FALSE
 );
 
-CREATE TABLE designation (
+CREATE TABLE qra_designation (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
-    issuer_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
+    issuer_id uuid REFERENCES qra_identity (id) ON DELETE RESTRICT,
     issuer_signature bytea,
-    identity_id uuid REFERENCES identity (id) ON DELETE RESTRICT,
+    identity_id uuid REFERENCES qra_identity (id) ON DELETE RESTRICT,
     permission PERM,
     resource text,
     expires_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
@@ -81,13 +81,13 @@ WITH (
 
 -- TODO; make fast index for query at the same time issuer_id,issuer_signature,
 -- identity_id, permission and resource
-CREATE INDEX designation_issuer_signature_idx ON designation (issuer_signature);
---CREATE INDEX designation_permission_idx ON designation (permission);
---CREATE INDEX designation_resource_idx ON designation (resource);
+CREATE INDEX designation_issuer_signature_idx ON qra_designation (issuer_signature);
+--CREATE INDEX designation_permission_idx ON qra_designation (permission);
+--CREATE INDEX designation_resource_idx ON qra_designation (resource);
 
-CREATE TABLE trail (
+CREATE TABLE qra_trail (
     id uuid NOT NULL DEFAULT uuid_generate_v1mc(),
-    designation_id uuid REFERENCES designation (id) ON DELETE RESTRICT,
+    designation_id uuid REFERENCES qra_designation (id) ON DELETE RESTRICT,
     created_at timestamp without time zone DEFAULT (now() at time zone 'utc'),
     CONSTRAINT trail_pkey PRIMARY KEY (id)
 )

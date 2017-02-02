@@ -26,10 +26,11 @@ package pgmanager
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/jimmy-go/qra"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -47,32 +48,36 @@ func Terminal(driver, connectURL string) error {
 	defer func() {
 		err := terminal.Restore(0, ost)
 		if err != nil {
-			log.Printf("Terminal : terminal restore : err [%s]", err)
+			E.Printf("Terminal : terminal restore : err [%s]", err)
 		}
 	}()
 
 	// create temporal file for log output
 
-	f, err := ioutil.TempFile(".", "qra_pgmanager_terminal.log")
+	f, err := ioutil.TempFile("", "qra_pgmanager_terminal.log")
 	if err != nil {
-		log.Printf("Terminal : create temporal log : err [%s]", err)
+		E.Printf("Terminal : create temporal log : err [%s]", err)
 		return err
 	}
-	log.SetOutput(f)
+	I.SetOutput(f)
+	E.SetOutput(f)
 	fmt.Printf("temporal log file: %s \r\n", f.Name())
 
 	defer func() {
 		err := f.Close()
 		if err != nil {
-			log.Printf("Terminal : close temporal log : err [%s]", err)
-		}
-		err = os.Remove(f.Name())
-		if err != nil {
-			log.Printf("Terminal : close temporal log : err [%s]", err)
+			E.Printf("Terminal : close temporal log : err [%s]", err)
 		}
 
+		// FIXME; as of today keep the terminal log file.
+		//		err = os.Remove(f.Name())
+		//		if err != nil {
+		//			E.Printf("Terminal : close temporal log : err [%s]", err)
+		//		}
+
 		// return log to stdout
-		log.SetOutput(os.Stdout)
+		I.SetOutput(os.Stdout)
+		E.SetOutput(os.Stderr)
 	}()
 
 	// this represents user in terminal
@@ -82,7 +87,7 @@ func Terminal(driver, connectURL string) error {
 	for {
 		l, err := term.ReadLine()
 		if err != nil {
-			log.Printf("Error read line : err [%s]", err)
+			E.Printf("Error read line : err [%s]", err)
 			return err
 		}
 
@@ -102,23 +107,23 @@ func Terminal(driver, connectURL string) error {
 				continue
 			}
 
-			err = designation.Search(ctx, nil, "identity-create:*")
+			err = qra.Search(ctx, nil, "identity-create:*")
 			if err != nil {
-				log.Printf("search : err [%s]", err)
+				E.Printf("search : err [%s]", err)
 				fmt.Printf("You don't have 'identity-create' permission.\n\r")
 				continue
 			}
 
 			p, err := term.ReadPassword("Write password for the new identity\n\r")
 			if err != nil {
-				log.Printf("read password : err [%s]", err)
+				E.Printf("read password : err [%s]", err)
 				fmt.Printf("Can't read password")
 				continue
 			}
 
 			_, err = makeUser(x[1], p)
 			if err != nil {
-				log.Printf("can't create identity : err [%s]", err)
+				E.Printf("can't create identity : err [%s]", err)
 				fmt.Printf("Can't create identity. Password must be equal or greater than 8 characters\n\r")
 				continue
 			}
@@ -127,7 +132,7 @@ func Terminal(driver, connectURL string) error {
 		case "2:":
 
 			x := strings.Split(l, ":")
-			log.Printf("x [%v]", x)
+			E.Printf("x [%v]", x)
 			if len(x) != 4 {
 				fmt.Printf("Invalid format. Must be '2:identity:permission:resource'.\n\r")
 				continue
@@ -135,7 +140,7 @@ func Terminal(driver, connectURL string) error {
 
 			p, err := term.ReadPassword("Password\n\r")
 			if err != nil {
-				log.Printf("read password : err [%s]", err)
+				E.Printf("read password : err [%s]", err)
 				fmt.Printf("Can't read password : err [%s]", err)
 				continue
 			}
@@ -143,9 +148,9 @@ func Terminal(driver, connectURL string) error {
 			// one month permission.
 			expiresAt := time.Now().UTC().Add(24 * time.Hour * 30)
 
-			err = designation.Allow(ctx, p, x[2], x[3], x[1], expiresAt)
+			err = qra.Allow(ctx, p, x[2], x[3], x[1], expiresAt)
 			if err != nil {
-				log.Printf("revoke : err [%s]", err)
+				E.Printf("revoke : err [%s]", err)
 				fmt.Printf("Can't share permission\n\r")
 				continue
 			}
@@ -154,7 +159,7 @@ func Terminal(driver, connectURL string) error {
 		case "3:":
 
 			x := strings.Split(l, ":")
-			log.Printf("x [%v]", x)
+			E.Printf("x [%v]", x)
 			if len(x) != 4 {
 				fmt.Printf("Invalid format. Must be '3:identity:permission:resource'.\n\r")
 				continue
@@ -162,14 +167,14 @@ func Terminal(driver, connectURL string) error {
 
 			p, err := term.ReadPassword("Password\n\r")
 			if err != nil {
-				log.Printf("read password : err [%s]", err)
+				E.Printf("read password : err [%s]", err)
 				fmt.Printf("Can't read password : err [%s]", err)
 				continue
 			}
 
-			err = designation.Revoke(ctx, p, x[2], x[3], x[1])
+			err = qra.Revoke(ctx, p, x[2], x[3], x[1])
 			if err != nil {
-				log.Printf("revoke : err [%s]", err)
+				E.Printf("revoke : err [%s]", err)
 				fmt.Printf("Can't revoke permission\n\r")
 				continue
 			}
@@ -181,7 +186,7 @@ func Terminal(driver, connectURL string) error {
 			fmt.Printf("\n\rRevoke permission [3:<identity>:<permission>:<resource>]")
 			fmt.Printf("\n\rLogout [:5]\n\r")
 		case ":5":
-			err := authentication.Close(ctx)
+			err := qra.Close(ctx)
 			if err != nil {
 				fmt.Printf("Can't close session.\n\r")
 				continue
@@ -206,7 +211,7 @@ func Terminal(driver, connectURL string) error {
 
 					// authentication
 
-					err = authentication.Authenticate(ctx, p, &ctx.Token)
+					err = qra.Authenticate(ctx, p, &ctx.Token)
 					if err != nil {
 						fmt.Printf("Invalid username or password\n\r")
 						ctx.Username = ""
@@ -215,12 +220,12 @@ func Terminal(driver, connectURL string) error {
 
 					// session on terminal permission validation.
 
-					err = designation.Search(ctx, nil, "session-on:terminal")
+					err = qra.Search(ctx, nil, "session-on:terminal")
 					if err != nil {
 						fmt.Printf("You don't have allowed terminal sessions\n\r")
-						err = authentication.Close(ctx)
+						err = qra.Close(ctx)
 						if err != nil {
-							log.Printf("Close session err [%s]", err)
+							E.Printf("Close session err [%s]", err)
 						}
 						ctx.Username = ""
 						ctx.Token = ""
