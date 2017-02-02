@@ -44,7 +44,9 @@ var (
 	// will generate a new session name.
 	sessName = defaultSessionName()
 
-	loginURL = "/login"
+	homeURI   = "/"
+	loginURI  = "/login"
+	logoutURI = "/logout"
 
 	// ErrInvalidSessionName error.
 	ErrInvalidSessionName = errors.New("session name must be greater than 10 characters")
@@ -68,6 +70,8 @@ type Options struct {
 	Separator   string
 	SessionName string
 	LoginURL    string
+	LogoutURL   string
+	HomeURL     string
 }
 
 // Configure inits the cookie store.
@@ -91,7 +95,13 @@ func Configure(o *Options) error {
 		return ErrInvalidSessionName
 	}
 	if len(o.LoginURL) > 1 {
-		loginURL = o.LoginURL
+		loginURI = o.LoginURL
+	}
+	if len(o.LogoutURL) > 1 {
+		logoutURI = o.LogoutURL
+	}
+	if len(o.HomeURL) > 1 {
+		homeURI = o.HomeURL
 	}
 
 	var ksb []byte
@@ -105,16 +115,16 @@ func Configure(o *Options) error {
 // Handler middleware.
 func Handler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Handler : uri [%s]", r.RequestURI)
+
 		// handler must apply to all uri except for /login.
-		if r.RequestURI == loginURL {
+		if r.RequestURI == loginURI {
 			h.ServeHTTP(w, r)
 			return
 		}
 
 		u, err := CookUser(r, w)
 		if err != nil {
-			http.Redirect(w, r, loginURL, http.StatusSeeOther)
+			http.Redirect(w, r, loginURI, http.StatusSeeOther)
 			return
 		}
 
@@ -128,7 +138,7 @@ func Handler(h http.Handler) http.Handler {
 		err = qra.Search(ctx, nil, "read:webadmin")
 		if err != nil {
 			log.Printf("Handler : err [%s]", err)
-			http.Redirect(w, r, loginURL, http.StatusSeeOther)
+			http.Redirect(w, r, loginURI, http.StatusSeeOther)
 			return
 		}
 
@@ -157,7 +167,7 @@ func Login() http.Handler {
 			if e := cookFlashSet(r, w, err); e != nil {
 				log.Printf("Handler : err [%s]", e)
 			}
-			http.Redirect(w, r, loginURL, http.StatusSeeOther)
+			http.Redirect(w, r, loginURI, http.StatusSeeOther)
 			return
 		}
 
@@ -166,7 +176,7 @@ func Login() http.Handler {
 			log.Printf("Login : cookie store token : err [%s]", err)
 		}
 
-		http.Redirect(w, r, "/", http.StatusSeeOther)
+		http.Redirect(w, r, homeURI, http.StatusSeeOther)
 	})
 }
 
@@ -180,7 +190,7 @@ func Logout() http.Handler {
 
 		token, err := cookToken(r, w)
 		if err != nil {
-			http.Redirect(w, r, loginURL, http.StatusSeeOther)
+			http.Redirect(w, r, loginURI, http.StatusSeeOther)
 			return
 		}
 
@@ -203,7 +213,7 @@ func Logout() http.Handler {
 			log.Printf("Logout : delete cookie : err [%s]", err)
 		}
 
-		http.Redirect(w, r, loginURL, http.StatusSeeOther)
+		http.Redirect(w, r, loginURI, http.StatusSeeOther)
 	})
 }
 
