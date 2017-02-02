@@ -32,6 +32,10 @@ import (
 
 // Set sets the menus. Must be called at init time.
 func Set(ms []*Menu) error {
+	if len(ms) < 1 {
+		return errors.New("qsess: invalid menus length")
+	}
+	menus = make([]*Menu, 0, len(ms))
 	for i := range ms {
 		if ms[i] == nil {
 			return errors.New("nil menu")
@@ -41,7 +45,7 @@ func Set(ms []*Menu) error {
 		if len(m.Role) < 1 {
 			return errors.New("empty menu key")
 		}
-		menus[m.Role] = m
+		menus = append(menus, m)
 	}
 	return nil
 }
@@ -57,7 +61,7 @@ type Menu struct {
 
 var (
 	// menus and roles required.
-	menus = make(map[string]*Menu)
+	menus []*Menu
 )
 
 // UserMenus returns user available menus.
@@ -67,6 +71,9 @@ func UserMenus(userID string) []*Menu {
 	var list []*Menu
 	for i := range menus {
 		m := menus[i]
+		if m == nil {
+			continue
+		}
 
 		err := qra.Search(Ctx{userID}, nil, "read:"+m.Role)
 		if err != nil {
