@@ -52,11 +52,12 @@ func Set(ms []*Menu) error {
 
 // Menu struct represents UI menu.
 type Menu struct {
-	Name  string
-	Role  string
-	Icon  string
-	Link  string
-	Badge int
+	Name   string
+	Role   string
+	Icon   string
+	Link   string
+	Active string
+	Badge  int
 }
 
 var (
@@ -65,7 +66,7 @@ var (
 )
 
 // UserMenus returns user available menus.
-func UserMenus(userID string) []*Menu {
+func UserMenus(userID, uri string) []*Menu {
 	// FIXME; qra search method will return a range of keys to prevent too many
 	// queries.
 	var list []*Menu
@@ -79,7 +80,13 @@ func UserMenus(userID string) []*Menu {
 		if err != nil {
 			continue
 		}
-		list = append(list, m)
+		y := *m
+		if m.Link == uri {
+			y.Active = m.Active
+		} else {
+			y.Active = ""
+		}
+		list = append(list, &y)
 	}
 	return list
 }
