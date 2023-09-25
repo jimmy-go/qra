@@ -1,4 +1,4 @@
-####Quick and Robust Admin interfaces written in Go
+#### Quick and Robust Admin interfaces written in Go
 
 [![License MIT](https://img.shields.io/npm/l/express.svg)](http://opensource.org/licenses/MIT)
 [![Build Status](https://travis-ci.org/jimmy-go/qra.svg?branch=master)](https://travis-ci.org/jimmy-go/qra)
@@ -11,12 +11,12 @@ authentication and authorization-designation policies.
 
 ![diagram](diagram.png)
 
-#####Installation:
+##### Installation:
 ```
 go get gopkg.in/jimmy-go/qra.v0
 ```
 
-#####Description:
+##### Description:
 In order to understand QRA you must know:
 
 **Identity** is a responsible party person or non-person entity.
@@ -72,7 +72,7 @@ type Designation interface {
 }
 ```
 
-#####Usage:
+##### Usage:
 
 QRA needs a default manager that you must register at init time.
 ```
@@ -95,7 +95,7 @@ func MyLoginHandler(w http.Response, r *http.Request) {
 }
 ```
 
-#####One more thing...
+##### One more thing...
 QRA has a collection of managers with several database integrations:
 
 `qra/litemanager.Connect("sqlite", "url://somedatabasefile.sql")` registers a manager
@@ -107,11 +107,11 @@ with PostgreSQL integration.
 `qra/rawmanager.Connect()` is a manager with only cache data (never use it on production,
 demonstration purposes only).
 
-#####Examples:
+##### Examples:
 
 See the [QRA examples](https://github.com/jimmy-go/qra-examples) for real world usage.
 
-#####License:
+##### License:
 
 MIT License
 
